@@ -1,77 +1,77 @@
-﻿# Gateway API
+# Gateway API
 
-Backend infrastructure for the API Gateway graduation project.
+Hạ tầng backend cho đồ án xây dựng API Gateway.
 
-## Current setup
+## Thiết lập hiện tại
 
-This repository currently includes the local database stack for development:
+Repository hiện có phần hạ tầng database local để phát triển:
 
-- PostgreSQL 16: configuration/control-plane database
-- Redis 7: cache, rate limit counters, health state, token blacklist
-- pgAdmin: PostgreSQL management UI
+- PostgreSQL 16: lưu cấu hình/control-plane
+- Redis 7: cache, bộ đếm rate limit, trạng thái health check, token blacklist
+- pgAdmin: giao diện quản lý PostgreSQL
 
-## Requirements
+## Yêu cầu
 
 - Docker Desktop
 - Docker Compose
 - Go
 - goose migration CLI
 
-## Environment setup
+## Thiết lập môi trường
 
-Create a local `.env` file from the example file:
+Tạo file `.env` local từ file mẫu:
 
 ```powershell
 cd "D:\PROJECT (GRADUATION)\gateway-api"
 Copy-Item .env.example .env
 ```
 
-Update values in `.env` if your local ports or passwords are different.
+Nếu port, user hoặc mật khẩu local khác file mẫu, hãy chỉnh lại trong `.env`.
 
-## Start database services
+## Chạy database services
 
-From the `database` directory, run Docker Compose with the root `.env` file:
+Từ thư mục `database`, chạy Docker Compose với file `.env` ở root project:
 
 ```powershell
 cd "D:\PROJECT (GRADUATION)\gateway-api\database"
 docker compose --env-file ..\.env -f docker-compose.yml up -d
 ```
 
-Check running containers:
+Kiểm tra container đang chạy:
 
 ```powershell
 docker compose --env-file ..\.env -f docker-compose.yml ps
 ```
 
-## Install goose
+## Cài goose
 
-Install the goose CLI once:
+Cài goose CLI một lần:
 
 ```powershell
 go install github.com/pressly/goose/v3/cmd/goose@latest
 ```
 
-Check that goose is available:
+Kiểm tra goose đã dùng được chưa:
 
 ```powershell
 goose -version
 ```
 
-If PowerShell cannot find `goose`, add your Go binary directory to `PATH`. It is usually:
+Nếu PowerShell báo không tìm thấy `goose`, hãy thêm thư mục Go binary vào `PATH`. Thường là:
 
 ```text
 C:\Users\<your-user>\go\bin
 ```
 
-## Run migrations
+## Chạy migrations
 
-The schema is managed by goose migration files in:
+Schema được quản lý bằng các file goose migration trong:
 
 ```text
 database/migrations
 ```
 
-From the project root, run:
+Từ root project, chạy:
 
 ```powershell
 cd "D:\PROJECT (GRADUATION)\gateway-api"
@@ -79,29 +79,29 @@ cd "D:\PROJECT (GRADUATION)\gateway-api"
 goose -dir database/migrations postgres "postgres://gateway_user:gateway_password@localhost:5433/gateway_db?sslmode=disable" up
 ```
 
-Check migration status:
+Kiểm tra trạng thái migration:
 
 ```powershell
 goose -dir database/migrations postgres "postgres://gateway_user:gateway_password@localhost:5433/gateway_db?sslmode=disable" status
 ```
 
-Check current migration version:
+Kiểm tra version migration hiện tại:
 
 ```powershell
 goose -dir database/migrations postgres "postgres://gateway_user:gateway_password@localhost:5433/gateway_db?sslmode=disable" version
 ```
 
-Rollback the latest migration:
+Rollback migration mới nhất:
 
 ```powershell
-goose -dir database/migrations postgres "postgres://gateway_user:gateway_password@localhost:54323/gateway_db?sslmode=disable" down
+goose -dir database/migrations postgres "postgres://gateway_user:gateway_password@localhost:5433/gateway_db?sslmode=disable" down
 ```
 
-If you changed `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, or the PostgreSQL port in `.env`, update the connection string before running goose.
+Nếu bạn đổi `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` hoặc port PostgreSQL trong `.env`, hãy sửa lại connection string trước khi chạy goose.
 
-## Migration order
+## Thứ tự migrations
 
-Current migration files are split by responsibility and ordered by dependency:
+Các migration hiện được tách theo trách nhiệm và sắp xếp theo thứ tự phụ thuộc khóa ngoại:
 
 ```text
 20260616071136_init_extensions.sql
@@ -118,7 +118,7 @@ Current migration files are split by responsibility and ordered by dependency:
 20260616071147_create_audit_logs.sql
 ```
 
-Important note during development: if you already applied the old single migration file and then split it into multiple files, reset the local database volume before running the new migration set.
+Lưu ý trong giai đoạn phát triển: nếu bạn đã từng chạy file migration cũ gộp một file, sau đó mới tách thành nhiều file nhỏ, hãy reset volume database local trước khi chạy bộ migration mới.
 
 ```powershell
 cd "D:\PROJECT (GRADUATION)\gateway-api\database"
@@ -126,17 +126,17 @@ docker compose --env-file ..\.env -f docker-compose.yml down -v
 docker compose --env-file ..\.env -f docker-compose.yml up -d
 ```
 
-Then run `goose up` again from the project root.
+Sau đó quay lại root project và chạy lại `goose up`.
 
-## Run seed data
+## Chạy seed data
 
-Seed files are stored in:
+Seed files nằm trong:
 
 ```text
 database/seeds
 ```
 
-They are split into small files and should be run in filename order:
+Seed đã được tách thành nhiều file nhỏ và nên chạy theo thứ tự tên file:
 
 ```text
 001_seed_roles_permissions.sql
@@ -149,7 +149,7 @@ They are split into small files and should be run in filename order:
 008_seed_aggregation.sql
 ```
 
-Run all seed files from the project root:
+Chạy toàn bộ seed từ root project:
 
 ```powershell
 cd "D:\PROJECT (GRADUATION)\gateway-api"
@@ -160,26 +160,26 @@ Get-ChildItem .\database\seeds\*.sql | Sort-Object Name | ForEach-Object {
 }
 ```
 
-Run one seed file manually:
+Chạy thủ công một file seed:
 
 ```powershell
 docker cp ".\database\seeds\001_seed_roles_permissions.sql" gateway-postgres:/tmp/001_seed_roles_permissions.sql
 docker exec -it gateway-postgres psql -U gateway_user -d gateway_db -f /tmp/001_seed_roles_permissions.sql
 ```
 
-Seed files use `ON CONFLICT DO NOTHING`, so they are safe to run multiple times.
+Các file seed dùng `ON CONFLICT DO NOTHING`, nên có thể chạy lại nhiều lần mà không bị lỗi trùng dữ liệu.
 
-The demo user password hashes and demo API key hash are placeholders. Replace them later with real bcrypt/argon2 password hashes and SHA-256 API key hashes from the backend.
+`password_hash` của user demo và `key_hash` của API key demo hiện là placeholder. Khi làm backend auth thật, hãy thay bằng bcrypt/argon2 password hash và SHA-256 API key hash thật.
 
-## Verify database data
+## Kiểm tra dữ liệu database
 
-Open `psql` inside the PostgreSQL container:
+Mở `psql` bên trong PostgreSQL container:
 
 ```powershell
 docker exec -it gateway-postgres psql -U gateway_user -d gateway_db
 ```
 
-Useful checks:
+Một số câu query kiểm tra nhanh:
 
 ```sql
 SELECT * FROM goose_db_version ORDER BY id;
@@ -190,28 +190,164 @@ SELECT path, method, auth_required FROM routes;
 SELECT name, limit_type, max_requests, window_seconds FROM rate_limit_policies;
 ```
 
-Exit `psql`:
+Thoát `psql`:
 
 ```sql
 \q
 ```
 
-## Access pgAdmin
+## Tạo Elasticsearch index template bằng Postman
 
-Open pgAdmin in the browser:
+Elasticsearch dùng index template để định nghĩa kiểu dữ liệu cho request logs. File template được lưu tại:
+
+```text
+database/elasticsearch/index-templates/gateway-logs-template.json
+```
+
+Trước khi tạo template, kiểm tra Elasticsearch đã chạy:
+
+```text
+GET http://localhost:9200
+```
+
+Trong Postman, tạo request:
+
+```text
+Method: PUT
+URL: http://localhost:9200/_index_template/gateway-logs-template
+```
+
+Tab `Headers`:
+
+```text
+Content-Type: application/json
+```
+
+Tab `Body`:
+
+```text
+raw -> JSON
+```
+
+Copy toàn bộ nội dung file `database/elasticsearch/index-templates/gateway-logs-template.json` vào body, rồi bấm `Send`.
+
+Nếu thành công, Elasticsearch sẽ trả:
+
+```json
+{
+  "acknowledged": true
+}
+```
+
+Kiểm tra template đã được tạo:
+
+```text
+GET http://localhost:9200/_index_template/gateway-logs-template?pretty
+```
+
+## Tạo log mẫu trong Elasticsearch bằng Postman
+
+Sau khi đã tạo index template, tạo request mới trong Postman:
+
+```text
+Method: POST
+URL: http://localhost:9200/gateway-logs-2026.06.16/_doc
+```
+
+Tab `Headers`:
+
+```text
+Content-Type: application/json
+```
+
+Tab `Body` chọn `raw -> JSON`, rồi dùng dữ liệu mẫu:
+
+```json
+{
+  "@timestamp": "2026-06-16T08:15:42.317Z",
+  "trace_id": "demo-trace-001",
+  "route_id": "80000000-0000-0000-0000-000000000001",
+  "service_name": "product-service",
+  "method": "GET",
+  "path": "/api/products",
+  "client_ip": "127.0.0.1",
+  "status_code": 200,
+  "response_time_ms": 38.5,
+  "upstream_latency_ms": 31.2,
+  "request_size": 512,
+  "response_size": 1843
+}
+```
+
+Nếu thành công, Elasticsearch sẽ trả `result` là `created`.
+
+Search log vừa tạo:
+
+```text
+GET http://localhost:9200/gateway-logs-*/_search?pretty
+```
+
+Search theo service:
+
+```text
+Method: GET
+URL: http://localhost:9200/gateway-logs-*/_search?pretty
+```
+
+Body `raw -> JSON`:
+
+```json
+{
+  "query": {
+    "term": {
+      "service_name": "product-service"
+    }
+  }
+}
+```
+
+## Xem log bằng Kibana
+
+Mở Kibana:
+
+```text
+http://localhost:5601
+```
+
+Tạo Data View:
+
+```text
+Stack Management -> Data Views -> Create data view
+```
+
+Nhập:
+
+```text
+Name: Gateway Logs
+Index pattern: gateway-logs-*
+Timestamp field: @timestamp
+```
+
+Sau đó vào `Discover`, chọn data view `Gateway Logs` để xem log.
+
+Nếu không thấy log, kiểm tra time range ở góc trên bên phải. Với log mẫu trong README, timestamp là ngày `2026-06-16`, nên cần chọn khoảng thời gian có chứa ngày này.
+
+## Truy cập pgAdmin
+
+Mở pgAdmin trong trình duyệt:
 
 ```text
 http://localhost:5050
 ```
 
-Default login comes from `.env`:
+Thông tin đăng nhập mặc định lấy từ `.env`:
 
 ```text
 Email: PGADMIN_DEFAULT_EMAIL
 Password: PGADMIN_DEFAULT_PASSWORD
 ```
 
-Register the PostgreSQL server in pgAdmin:
+Đăng ký PostgreSQL server trong pgAdmin:
 
 ```text
 Host: postgres
@@ -221,7 +357,7 @@ Username: POSTGRES_USER
 Password: POSTGRES_PASSWORD
 ```
 
-With the default `.env.example` values:
+Với giá trị mặc định trong `.env.example`:
 
 ```text
 Database: gateway_db
@@ -229,14 +365,14 @@ Username: gateway_user
 Password: gateway_password
 ```
 
-## Stop services
+## Dừng services
 
 ```powershell
 cd "D:\PROJECT (GRADUATION)\gateway-api\database"
 docker compose --env-file ..\.env -f docker-compose.yml down
 ```
 
-To stop and delete local volumes/data:
+Dừng services và xóa luôn volume/data local:
 
 ```powershell
 docker compose --env-file ..\.env -f docker-compose.yml down -v

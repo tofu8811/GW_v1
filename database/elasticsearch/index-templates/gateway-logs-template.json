@@ -1,0 +1,24 @@
+{
+  "index_patterns": ["gateway-logs-*"],
+  "template": {
+    "mappings": {
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "trace_id": { "type": "keyword" },
+        "route_id": { "type": "keyword" },
+        "service_name": { "type": "keyword" },
+        "method": { "type": "keyword" },
+        "path": { "type": "keyword" },
+        "client_ip": { "type": "ip" },
+        "user_id": { "type": "keyword" },
+        "api_key_id": { "type": "keyword" },
+        "status_code": { "type": "short" },
+        "response_time_ms": { "type": "float" },
+        "upstream_latency_ms": { "type": "float" },
+        "request_size": { "type": "long" },
+        "response_size": { "type": "long" },
+        "error_message": { "type": "text" }
+      }
+    }
+  }
+}
