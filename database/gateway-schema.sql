@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION set_updated_at()
+﻿CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = now();
@@ -83,14 +83,59 @@ CREATE TABLE cors_configs (
     max_age           INTEGER NOT NULL DEFAULT 3600
 );
 
--- 6. roles
+-- 6. gateway_plugins
+CREATE TABLE gateway_plugins (
+    id                  UUID PRIMARY KEY,
+    code                VARCHAR(50) NOT NULL UNIQUE,
+    name                VARCHAR(100) NOT NULL,
+    description         TEXT,
+    phase               VARCHAR(30) NOT NULL
+                            CHECK (phase IN (
+                                'before_request',
+                                'proxy',
+                                'after_response',
+                                'on_error'
+                            )),
+    default_priority    INTEGER NOT NULL DEFAULT 100,
+    config_schema       JSONB,
+    is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_gateway_plugins_phase
+ON gateway_plugins(phase)
+WHERE is_active;
+
+-- 7. route_plugins
+CREATE TABLE route_plugins (
+    id              UUID PRIMARY KEY,
+    route_id        UUID NOT NULL REFERENCES routes(id) ON DELETE CASCADE,
+    plugin_id       UUID NOT NULL REFERENCES gateway_plugins(id) ON DELETE RESTRICT,
+    priority        INTEGER NOT NULL DEFAULT 100,
+    config          JSONB NOT NULL DEFAULT '{}'::jsonb,
+    is_required     BOOLEAN NOT NULL DEFAULT TRUE,
+    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (route_id, plugin_id)
+);
+
+CREATE INDEX idx_route_plugins_route
+ON route_plugins(route_id, priority)
+WHERE is_active;
+
+CREATE INDEX idx_route_plugins_plugin
+ON route_plugins(plugin_id)
+WHERE is_active;
+-- 8. roles
 CREATE TABLE roles (
     id          UUID PRIMARY KEY,
     name        VARCHAR(50) NOT NULL UNIQUE,
     description TEXT
 );
 
--- 7. permissions
+-- 9. permissions
 CREATE TABLE permissions (
     id          UUID PRIMARY KEY,
     resource    VARCHAR(100) NOT NULL,
@@ -98,14 +143,14 @@ CREATE TABLE permissions (
     UNIQUE (resource, action)
 );
 
--- 8. role_permissions
+-- 10. role_permissions
 CREATE TABLE role_permissions (
     role_id       UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
     permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
     PRIMARY KEY (role_id, permission_id)
 );
 
--- 9. users
+-- 11. users
 CREATE TABLE users (
     id            UUID PRIMARY KEY,
     username      VARCHAR(50)  NOT NULL UNIQUE,
@@ -117,7 +162,7 @@ CREATE TABLE users (
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 10. api_keys
+-- 12. api_keys
 CREATE TABLE api_keys (
     id            UUID PRIMARY KEY,
     key_hash      VARCHAR(255) NOT NULL UNIQUE,
@@ -140,7 +185,7 @@ WHERE is_active;
 CREATE INDEX idx_apikeys_prefix
 ON api_keys(key_prefix);
 
--- 11. ip_blacklist
+-- 13. ip_blacklist
 CREATE TABLE ip_blacklist (
     id          UUID PRIMARY KEY,
     ip_or_cidr  CIDR NOT NULL UNIQUE,
@@ -153,7 +198,7 @@ CREATE TABLE ip_blacklist (
 CREATE INDEX idx_blacklist_cidr
 ON ip_blacklist USING gist (ip_or_cidr inet_ops);
 
--- 12. aggregation_configs
+-- 14. aggregation_configs
 CREATE TABLE aggregation_configs (
     id          UUID PRIMARY KEY,
     name        VARCHAR(100) NOT NULL UNIQUE,
@@ -164,7 +209,7 @@ CREATE TABLE aggregation_configs (
     UNIQUE (path, method)
 );
 
--- 13. aggregation_steps
+-- 15. aggregation_steps
 CREATE TABLE aggregation_steps (
     id               UUID PRIMARY KEY,
     aggregation_id   UUID NOT NULL REFERENCES aggregation_configs(id) ON DELETE CASCADE,
@@ -177,7 +222,7 @@ CREATE TABLE aggregation_steps (
     UNIQUE (aggregation_id, sequence)
 );
 
--- 14. audit_logs
+-- 16. audit_logs
 CREATE TABLE audit_logs (
     id          BIGSERIAL PRIMARY KEY,
     user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -206,6 +251,15 @@ BEFORE UPDATE ON routes
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
 
+CREATE TRIGGER trg_gateway_plugins_updated
+BEFORE UPDATE ON gateway_plugins
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER trg_route_plugins_updated
+BEFORE UPDATE ON route_plugins
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_users_updated
 BEFORE UPDATE ON users
 FOR EACH ROW
@@ -221,3 +275,6 @@ EXECUTE FUNCTION set_updated_at();
 -- docker exec -it gateway-postgres psql -U gateway_user -d gateway_db -f /tmp/gateway-schema.sql
 -- uuid v7 sinh ở backend
 -- migration dùng goose: github.com/pressly/goose/v3/cmd/goose@latest
+-- goose -dir database/migrations postgres "postgres://gateway_user:gateway_password@127.0.0.1:5433/gateway_db?sslmode=disable" up
+
+

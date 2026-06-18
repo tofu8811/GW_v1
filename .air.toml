@@ -1,0 +1,16 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/main.exe ./cmd/server"
+entrypoint = ["./tmp/main.exe"]
+include_ext = ["go", "tpl", "tmpl", "html"]
+exclude_dir = ["tmp", "vendor", "database"]
+delay = 1000
+stop_on_error = true
+
+[log]
+time = true
+
+[misc]
+clean_on_exit = true

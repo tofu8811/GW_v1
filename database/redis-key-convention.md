@@ -1,4 +1,4 @@
-# Quy ước Redis Key - API Gateway
+﻿# Quy ước Redis Key - API Gateway
 
 Redis dùng cho dữ liệu tạm thời, dữ liệu realtime và các dữ liệu nằm trong luồng xử lý nóng. PostgreSQL vẫn là nguồn sự thật cho dữ liệu cấu hình.
 
@@ -109,6 +109,115 @@ PUBLISH cfg:reload security
 
 Các node Gateway subscribe channel này và reload local cache khi cấu hình thay đổi.
 
+### Cache plugin pipeline theo route
+
+Metadata plugin và cấu hình gốc được lưu trong PostgreSQL. Redis chỉ lưu bản đã tổng hợp để Gateway đọc nhanh trong luồng request nóng.
+
+#### Danh sách plugin của route
+
+```text
+cfg:plugins:{route_id}
+```
+
+Ví dụ:
+
+```text
+cfg:plugins:80000000-0000-0000-0000-000000000001
+```
+
+Kiểu dữ liệu:
+
+```text
+String JSON
+```
+
+Ví dụ value:
+
+```json
+[
+  {
+    "code": "cors",
+    "phase": "before_request",
+    "priority": 10,
+    "is_required": true,
+    "config": {
+      "allowed_origins": ["http://localhost:3000"],
+      "allowed_methods": ["GET", "POST"]
+    }
+  },
+  {
+    "code": "auth",
+    "phase": "before_request",
+    "priority": 30,
+    "is_required": true,
+    "config": {
+      "required": true,
+      "roles": ["admin"]
+    }
+  }
+]
+```
+
+#### Pipeline plugin đã sắp xếp theo phase và priority
+
+```text
+cfg:pipeline:{route_id}
+```
+
+Ví dụ:
+
+```text
+cfg:pipeline:80000000-0000-0000-0000-000000000001
+```
+
+Kiểu dữ liệu:
+
+```text
+String JSON
+```
+
+Gateway nên đọc key này sau khi match route. Nếu cache miss, Gateway load từ PostgreSQL bằng `route_plugins` join `gateway_plugins`, sắp xếp theo `phase` và `priority`, sau đó ghi lại vào Redis.
+
+#### Metadata plugin theo code
+
+```text
+cfg:plugin:{plugin_code}
+```
+
+Ví dụ:
+
+```text
+cfg:plugin:auth
+cfg:plugin:rate_limit
+cfg:plugin:cors
+```
+
+Kiểu dữ liệu:
+
+```text
+String JSON
+```
+
+Ví dụ value:
+
+```json
+{
+  "code": "rate_limit",
+  "name": "Rate Limit",
+  "phase": "before_request",
+  "default_priority": 40,
+  "is_active": true
+}
+```
+
+Khi admin thay đổi `gateway_plugins`, `route_plugins`, `cors_configs`, `rate_limit_policies` hoặc `routes`, cần tăng `cfg:version` và publish `cfg:reload` để các Gateway node clear/reload pipeline liên quan.
+
+Lệnh test gợi ý:
+
+```redis
+SET cfg:pipeline:80000000-0000-0000-0000-000000000001 '[{"code":"auth","phase":"before_request","priority":30}]'
+GET cfg:pipeline:80000000-0000-0000-0000-000000000001
+```
 ## 2. Rate limiting
 
 Luật rate limit được lưu trong PostgreSQL. Redis chỉ lưu bộ đếm.
@@ -501,3 +610,4 @@ jwt:blacklist:{jti}
 refresh:{token_hash}
 
 lb:rr:{service_id}
+
