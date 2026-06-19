@@ -1,0 +1,21 @@
+# Go build and test artifacts
+.gocache/
+tmp/
+bin/
+*.test
+*.out
+coverage.out
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
