@@ -3,12 +3,12 @@ package main
 import (
 	"log"
 
-	"gateway-api/internal/config"
+	"gateway-api/config"
 	"gateway-api/internal/health"
-	"gateway-api/internal/logger"
-	"gateway-api/internal/postgres"
-	redisclient "gateway-api/internal/redis"
 	"gateway-api/internal/server"
+	"gateway-api/infrastructure/logger"
+	"gateway-api/infrastructure/postgres"
+	redisclient "gateway-api/infrastructure/redis"
 )
 
 func main() {

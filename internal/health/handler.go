@@ -7,6 +7,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+
+	"gateway-api/helper/response"
 )
 
 type Handler struct {
@@ -22,7 +24,7 @@ func NewHandler(db *pgxpool.Pool, redisClient *redis.Client) *Handler {
 }
 
 func (h *Handler) Health(c *fiber.Ctx) error {
-	return c.JSON(fiber.Map{
+	return response.OK(c, fiber.Map{
 		"status": "ok",
 	})
 }
@@ -42,17 +44,22 @@ func (h *Handler) Ready(c *fiber.Ctx) error {
 		redisStatus = "error"
 	}
 
-	statusCode := fiber.StatusOK
-	overall := "ok"
-
-	if postgresStatus != "ok" || redisStatus != "ok" {
-		statusCode = fiber.StatusServiceUnavailable
-		overall = "error"
-	}
-
-	return c.Status(statusCode).JSON(fiber.Map{
-		"status":   overall,
+	data := fiber.Map{
+		"status":   "ok",
 		"postgres": postgresStatus,
 		"redis":    redisStatus,
-	})
+	}
+
+	if postgresStatus != "ok" || redisStatus != "ok" {
+		data["status"] = "error"
+
+		return response.ErrorWithDetails(
+			c,
+			fiber.StatusServiceUnavailable,
+			"service_unavailable",
+			"One or more dependencies are unavailable",
+			data,
+		)
+	}
+	return response.OK(c, data)
 }
