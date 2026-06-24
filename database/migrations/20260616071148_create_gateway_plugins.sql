@@ -1,11 +1,11 @@
 -- +goose Up
 CREATE TABLE gateway_plugins (
-    id                  UUID PRIMARY KEY,
-    code                VARCHAR(50) NOT NULL UNIQUE,
+    id                  UUID CONSTRAINT gateway_plugins_pkey PRIMARY KEY,
+    code                VARCHAR(50) NOT NULL CONSTRAINT gateway_plugins_code_unique UNIQUE,
     name                VARCHAR(100) NOT NULL,
     description         TEXT,
     phase               VARCHAR(30) NOT NULL
-                            CHECK (phase IN (
+                            CONSTRAINT gateway_plugins_phase_check CHECK (phase IN (
                                 'before_request',
                                 'proxy',
                                 'after_response',

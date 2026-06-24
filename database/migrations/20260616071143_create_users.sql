@@ -1,10 +1,10 @@
 -- +goose Up
 CREATE TABLE users (
-    id            UUID PRIMARY KEY,
-    username      VARCHAR(50)  NOT NULL UNIQUE,
-    email         VARCHAR(255) NOT NULL UNIQUE,
+    id            UUID CONSTRAINT users_pkey PRIMARY KEY,
+    username      VARCHAR(50)  NOT NULL CONSTRAINT users_username_unique UNIQUE,
+    email         VARCHAR(255) NOT NULL CONSTRAINT users_email_unique UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    role_id       UUID NOT NULL REFERENCES roles(id) ON DELETE RESTRICT,
+    role_id       UUID NOT NULL CONSTRAINT users_role_id_fkey REFERENCES roles(id) ON DELETE RESTRICT,
     is_active     BOOLEAN NOT NULL DEFAULT TRUE,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()

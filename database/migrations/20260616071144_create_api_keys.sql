@@ -1,12 +1,12 @@
 -- +goose Up
 CREATE TABLE api_keys (
-    id            UUID PRIMARY KEY,
-    key_hash      VARCHAR(255) NOT NULL UNIQUE,
+    id            UUID CONSTRAINT api_keys_pkey PRIMARY KEY,
+    key_hash      VARCHAR(255) NOT NULL CONSTRAINT api_keys_key_hash_unique UNIQUE,
     key_prefix    VARCHAR(12)  NOT NULL,
     label         VARCHAR(100),
-    user_id       UUID REFERENCES users(id) ON DELETE CASCADE,
+    user_id       UUID CONSTRAINT api_keys_user_id_fkey REFERENCES users(id) ON DELETE CASCADE,
     scopes        TEXT[] NOT NULL DEFAULT '{}',
-    rate_limit_id UUID REFERENCES rate_limit_policies(id) ON DELETE SET NULL,
+    rate_limit_id UUID CONSTRAINT api_keys_rate_limit_id_fkey REFERENCES rate_limit_policies(id) ON DELETE SET NULL,
     expires_at    TIMESTAMPTZ,
     is_active     BOOLEAN NOT NULL DEFAULT TRUE,
     last_used_at  TIMESTAMPTZ,
