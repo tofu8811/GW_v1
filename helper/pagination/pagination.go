@@ -73,4 +73,6 @@ func NewMeta(p Pagination, total int64) Meta {
 }
 
 // sql có limit/ offset
-// cách dùng : response.WithMeta(c, items, pagination.NewMeta(p, total))
+// cách dùng : 
+// p := pagination.FromQuery(c)
+// response.WithMeta(c, items, pagination.NewMeta(p, total))
