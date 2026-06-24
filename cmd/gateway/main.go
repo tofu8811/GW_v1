@@ -9,6 +9,7 @@ import (
 	redisclient "gateway-api/infrastructure/redis"
 	"gateway-api/internal/admin"
 	"gateway-api/internal/health"
+	"gateway-api/internal/proxy"
 	"gateway-api/internal/server"
 )
 
@@ -34,6 +35,7 @@ func main() {
 	srv := server.New(logg, healthHandler)
 
 	admin.RegisterAdminRoutes(srv.App, db)
+	proxy.RegisterProxyRoutes(srv.App, db)
 
 	if err := srv.Run(cfg.AppPort); err != nil {
 		logg.Error("server stopped", "error", err)
