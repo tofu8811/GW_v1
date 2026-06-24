@@ -1,15 +1,15 @@
 -- +goose Up
 CREATE TABLE route_plugins (
-    id              UUID PRIMARY KEY,
-    route_id        UUID NOT NULL REFERENCES routes(id) ON DELETE CASCADE,
-    plugin_id       UUID NOT NULL REFERENCES gateway_plugins(id) ON DELETE RESTRICT,
+    id              UUID CONSTRAINT route_plugins_pkey PRIMARY KEY,
+    route_id        UUID NOT NULL CONSTRAINT route_plugins_route_id_fkey REFERENCES routes(id) ON DELETE CASCADE,
+    plugin_id       UUID NOT NULL CONSTRAINT route_plugins_plugin_id_fkey REFERENCES gateway_plugins(id) ON DELETE RESTRICT,
     priority        INTEGER NOT NULL DEFAULT 100,
     config          JSONB NOT NULL DEFAULT '{}'::jsonb,
     is_required     BOOLEAN NOT NULL DEFAULT TRUE,
     is_active       BOOLEAN NOT NULL DEFAULT TRUE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (route_id, plugin_id)
+    CONSTRAINT route_plugins_route_plugin_unique UNIQUE (route_id, plugin_id)
 );
 
 CREATE INDEX idx_route_plugins_route

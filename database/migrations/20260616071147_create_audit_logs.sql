@@ -1,8 +1,8 @@
 -- +goose Up
 CREATE TABLE audit_logs (
-    id          BIGSERIAL PRIMARY KEY,
-    user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
-    action      VARCHAR(20) NOT NULL CHECK (action IN ('create', 'update', 'delete')),
+    id          BIGSERIAL CONSTRAINT audit_logs_pkey PRIMARY KEY,
+    user_id     UUID CONSTRAINT audit_logs_user_id_fkey REFERENCES users(id) ON DELETE SET NULL,
+    action      VARCHAR(20) NOT NULL CONSTRAINT audit_logs_action_check CHECK (action IN ('create', 'update', 'delete')),
     entity_type VARCHAR(50) NOT NULL,
     entity_id   UUID,
     old_value   JSONB,

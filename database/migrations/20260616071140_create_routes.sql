@@ -1,19 +1,19 @@
 -- +goose Up
 CREATE TABLE routes (
-    id              UUID PRIMARY KEY,
+    id              UUID CONSTRAINT routes_pkey PRIMARY KEY,
     path            VARCHAR(255) NOT NULL,
     method          VARCHAR(10) NOT NULL DEFAULT 'GET'
-                        CHECK (method IN ('GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS','ANY')),
-    service_id      UUID NOT NULL REFERENCES services(id) ON DELETE RESTRICT,
+                        CONSTRAINT routes_method_check CHECK (method IN ('GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS','ANY')),
+    service_id      UUID NOT NULL CONSTRAINT routes_service_id_fkey REFERENCES services(id) ON DELETE RESTRICT,
     strip_prefix    BOOLEAN NOT NULL DEFAULT FALSE,
     rewrite_target  VARCHAR(255),
     auth_required   BOOLEAN NOT NULL DEFAULT TRUE,
-    rate_limit_id   UUID REFERENCES rate_limit_policies(id) ON DELETE SET NULL,
+    rate_limit_id   UUID CONSTRAINT routes_rate_limit_id_fkey REFERENCES rate_limit_policies(id) ON DELETE SET NULL,
     priority        INTEGER NOT NULL DEFAULT 0,
     is_active       BOOLEAN NOT NULL DEFAULT TRUE,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (path, method)
+    CONSTRAINT routes_path_method_unique UNIQUE (path, method)
 );
 
 CREATE INDEX idx_routes_lookup

@@ -1,13 +1,13 @@
 -- +goose Up
 CREATE TABLE service_instances (
-    id          UUID PRIMARY KEY,
-    service_id  UUID NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    id          UUID CONSTRAINT service_instances_pkey PRIMARY KEY,
+    service_id  UUID NOT NULL CONSTRAINT service_instances_service_id_fkey REFERENCES services(id) ON DELETE CASCADE,
     host        VARCHAR(255) NOT NULL,
-    port        INTEGER NOT NULL CHECK (port BETWEEN 1 AND 65535),
-    weight      SMALLINT NOT NULL DEFAULT 1 CHECK (weight >= 0),
+    port        INTEGER NOT NULL CONSTRAINT service_instances_port_check CHECK (port BETWEEN 1 AND 65535),
+    weight      SMALLINT NOT NULL DEFAULT 1 CONSTRAINT service_instances_weight_check CHECK (weight >= 0),
     is_active   BOOLEAN NOT NULL DEFAULT TRUE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (service_id, host, port)
+    CONSTRAINT service_instances_service_host_port_unique UNIQUE (service_id, host, port)
 );
 
 CREATE INDEX idx_instances_service
