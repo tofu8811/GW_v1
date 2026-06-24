@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"gateway-api/helper/pagination"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -45,15 +47,16 @@ func (r *Repository) Create(ctx context.Context, route *Route) error {
 	).Scan(&route.CreatedAt, &route.UpdatedAt)
 }
 
-func (r *Repository) FindAll(ctx context.Context) ([]Route, error) {
+func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Route, error) {
 	query := `
 		SELECT id, path, method, service_id, strip_prefix, rewrite_target,
 		       auth_required, rate_limit_id, priority, is_active, created_at, updated_at
 		FROM routes
 		ORDER BY priority DESC, created_at DESC
+		LIMIT $1 OFFSET $2
 	`
 
-	rows, err := r.db.Query(ctx, query)
+	rows, err := r.db.Query(ctx, query, p.Limit, p.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +89,12 @@ func (r *Repository) FindAll(ctx context.Context) ([]Route, error) {
 	}
 
 	return routes, rows.Err()
+}
+
+func (r *Repository) Count(ctx context.Context) (int64, error) {
+	var total int64
+	err := r.db.QueryRow(ctx, `SELECT count(*) FROM routes`).Scan(&total)
+	return total, err
 }
 
 func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*Route, error) {

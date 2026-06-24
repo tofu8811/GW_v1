@@ -2,7 +2,11 @@ package routes
 
 import (
 	"errors"
-	"strings"
+
+	"gateway-api/helper/dberror"
+	"gateway-api/helper/pagination"
+	"gateway-api/helper/response"
+	"gateway-api/helper/validation"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -20,40 +24,37 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	var req CreateRouteRequest
 
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"message": "invalid request body"})
+		return response.BadRequest(c, "invalid request body")
 	}
 
-	if req.Path == "" || req.ServiceID == "" {
-		return c.Status(400).JSON(fiber.Map{"message": "path and service_id are required"})
-	}
-
-	serviceID, err := uuid.Parse(req.ServiceID)
+	path, err := validation.NormalizePath(req.Path)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"message": "invalid service_id"})
+		return response.BadRequest(c, err.Error())
+	}
+
+	serviceID, err := validation.ParseRequiredUUID("service_id", req.ServiceID)
+	if err != nil {
+		return response.BadRequest(c, err.Error())
 	}
 
 	id, err := uuid.NewV7()
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"message": "cannot generate route id"})
+		return response.InternalServerError(c)
 	}
 
-	method := strings.ToUpper(req.Method)
-	if method == "" {
-		method = "GET"
-	}
-
-	if !isValidMethod(method) {
-		return c.Status(400).JSON(fiber.Map{"message": "invalid method"})
-	}
-
-	rateLimitID, err := uuidPtr(req.RateLimitID)
+	method, err := validation.NormalizeRouteMethodOrDefault(req.Method, validation.DefaultRouteMethod, true)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"message": "invalid rate_limit_id"})
+		return response.BadRequest(c, err.Error())
+	}
+
+	rateLimitID, err := validation.ParseOptionalUUID("rate_limit_id", req.RateLimitID)
+	if err != nil {
+		return response.BadRequest(c, err.Error())
 	}
 
 	route := Route{
 		ID:            id,
-		Path:          req.Path,
+		Path:          path,
 		Method:        method,
 		ServiceID:     serviceID,
 		StripPrefix:   boolValue(req.StripPrefix, false),
@@ -65,16 +66,18 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	}
 
 	if err := h.repository.Create(c.Context(), &route); err != nil {
-		return c.Status(500).JSON(fiber.Map{"message": "cannot create route"})
+		return handleDBError(c, err)
 	}
 
-	return c.Status(201).JSON(toResponse(route))
+	return response.Created(c, toResponse(route))
 }
 
 func (h *Handler) FindAll(c *fiber.Ctx) error {
-	routes, err := h.repository.FindAll(c.Context())
+	p := pagination.FromQuery(c)
+
+	routes, err := h.repository.FindAll(c.Context(), p)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"message": "cannot get routes"})
+		return response.InternalServerError(c)
 	}
 
 	responses := make([]RouteResponse, 0, len(routes))
@@ -82,63 +85,72 @@ func (h *Handler) FindAll(c *fiber.Ctx) error {
 		responses = append(responses, toResponse(route))
 	}
 
-	return c.JSON(responses)
+	total, err := h.repository.Count(c.Context())
+	if err != nil {
+		return response.InternalServerError(c)
+	}
+
+	return response.WithMeta(c, responses, pagination.NewMeta(p, total))
 }
 
 func (h *Handler) FindByID(c *fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := validation.ParseRequiredUUID("id", c.Params("id"))
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"message": "invalid route id"})
+		return response.BadRequest(c, err.Error())
 	}
 
 	route, err := h.repository.FindByID(c.Context(), id)
 	if errors.Is(err, ErrRouteNotFound) {
-		return c.Status(404).JSON(fiber.Map{"message": "route not found"})
+		return response.NotFound(c, "route not found")
 	}
 
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"message": "cannot get route"})
+		return response.InternalServerError(c)
 	}
 
-	return c.JSON(toResponse(*route))
+	return response.OK(c, toResponse(*route))
 }
 
 func (h *Handler) Update(c *fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := validation.ParseRequiredUUID("id", c.Params("id"))
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"message": "invalid route id"})
+		return response.BadRequest(c, err.Error())
 	}
 
 	route, err := h.repository.FindByID(c.Context(), id)
 	if errors.Is(err, ErrRouteNotFound) {
-		return c.Status(404).JSON(fiber.Map{"message": "route not found"})
+		return response.NotFound(c, "route not found")
 	}
 
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"message": "cannot get route"})
+		return response.InternalServerError(c)
 	}
 
 	var req UpdateRouteRequest
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"message": "invalid request body"})
+		return response.BadRequest(c, "invalid request body")
 	}
 
 	if req.Path != nil {
-		route.Path = *req.Path
+		path, err := validation.NormalizePath(*req.Path)
+		if err != nil {
+			return response.BadRequest(c, err.Error())
+		}
+		route.Path = path
 	}
 
 	if req.Method != nil {
-		method := strings.ToUpper(*req.Method)
-		if !isValidMethod(method) {
-			return c.Status(400).JSON(fiber.Map{"message": "invalid method"})
+		method, err := validation.NormalizeRouteMethod(*req.Method, true)
+		if err != nil {
+			return response.BadRequest(c, err.Error())
 		}
 		route.Method = method
 	}
 
 	if req.ServiceID != nil {
-		serviceID, err := uuid.Parse(*req.ServiceID)
+		serviceID, err := validation.ParseRequiredUUID("service_id", *req.ServiceID)
 		if err != nil {
-			return c.Status(400).JSON(fiber.Map{"message": "invalid service_id"})
+			return response.BadRequest(c, err.Error())
 		}
 		route.ServiceID = serviceID
 	}
@@ -156,9 +168,9 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 	}
 
 	if req.RateLimitID != nil {
-		rateLimitID, err := uuidPtr(req.RateLimitID)
+		rateLimitID, err := validation.ParseOptionalUUID("rate_limit_id", req.RateLimitID)
 		if err != nil {
-			return c.Status(400).JSON(fiber.Map{"message": "invalid rate_limit_id"})
+			return response.BadRequest(c, err.Error())
 		}
 		route.RateLimitID = rateLimitID
 	}
@@ -172,37 +184,31 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 	}
 
 	if err := h.repository.Update(c.Context(), route); err != nil {
-		return c.Status(500).JSON(fiber.Map{"message": "cannot update route"})
+		if errors.Is(err, ErrRouteNotFound) {
+			return response.NotFound(c, "route not found")
+		}
+		return handleDBError(c, err)
 	}
 
-	return c.JSON(toResponse(*route))
+	return response.OK(c, toResponse(*route))
 }
 
 func (h *Handler) Delete(c *fiber.Ctx) error {
-	id, err := uuid.Parse(c.Params("id"))
+	id, err := validation.ParseRequiredUUID("id", c.Params("id"))
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"message": "invalid route id"})
+		return response.BadRequest(c, err.Error())
 	}
 
 	err = h.repository.Delete(c.Context(), id)
 	if errors.Is(err, ErrRouteNotFound) {
-		return c.Status(404).JSON(fiber.Map{"message": "route not found"})
+		return response.NotFound(c, "route not found")
 	}
 
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"message": "cannot delete route"})
+		return handleDBError(c, err)
 	}
 
-	return c.JSON(fiber.Map{"message": "delete route successfully"})
-}
-
-func isValidMethod(method string) bool {
-	switch method {
-	case "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "ANY":
-		return true
-	default:
-		return false
-	}
+	return response.NoContent(c)
 }
 
 func boolValue(value *bool, defaultValue bool) bool {
@@ -227,19 +233,6 @@ func stringPtr(value *string) *string {
 	return value
 }
 
-func uuidPtr(value *string) (*uuid.UUID, error) {
-	if value == nil || *value == "" {
-		return nil, nil
-	}
-
-	id, err := uuid.Parse(*value)
-	if err != nil {
-		return nil, err
-	}
-
-	return &id, nil
-}
-
 func toResponse(route Route) RouteResponse {
 	var rateLimitID *string
 	if route.RateLimitID != nil {
@@ -261,4 +254,12 @@ func toResponse(route Route) RouteResponse {
 		CreatedAt:     route.CreatedAt,
 		UpdatedAt:     route.UpdatedAt,
 	}
+}
+
+func handleDBError(c *fiber.Ctx, err error) error {
+	if apiErr, ok := dberror.MapDBError(err); ok {
+		return response.Error(c, apiErr.Status, apiErr.Code, apiErr.Message)
+	}
+
+	return response.InternalServerError(c)
 }

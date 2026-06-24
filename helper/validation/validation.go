@@ -64,19 +64,19 @@ func NormalizeMethod(method string) (string, error) {
 // 	return NormalizeMethod(method)
 // }
 
-	// NormalizeRouteMethod validate method cho route và có thể chặn ANY theo chính sách caller.
-	func NormalizeRouteMethod(method string, allowAny bool) (string, error) {
-		normalized, err := NormalizeMethod(method)
-		if err != nil {
-			return "", err
-		}
-
-		if normalized == "ANY" && !allowAny {
-			return "", FieldError{Field: "method", Message: "ANY method is not allowed"}
-		}
-
-		return normalized, nil
+// NormalizeRouteMethod validate method cho route và có thể chặn ANY theo chính sách caller.
+func NormalizeRouteMethod(method string, allowAny bool) (string, error) {
+	normalized, err := NormalizeMethod(method)
+	if err != nil {
+		return "", err
 	}
+
+	if normalized == "ANY" && !allowAny {
+		return "", FieldError{Field: "method", Message: "ANY method is not allowed"}
+	}
+
+	return normalized, nil
+}
 
 // NormalizeRouteMethodOrDefault dùng defaultMethod khi method rỗng rồi validate route method.
 func NormalizeRouteMethodOrDefault(method string, defaultMethod string, allowAny bool) (string, error) {
