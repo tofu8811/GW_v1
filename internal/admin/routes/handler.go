@@ -4,12 +4,12 @@ import (
 	"errors"
 
 	"gateway-api/helper/dberror"
+	"gateway-api/helper/idgen"
 	"gateway-api/helper/pagination"
 	"gateway-api/helper/response"
 	"gateway-api/helper/validation"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -37,7 +37,7 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		return response.BadRequest(c, err.Error())
 	}
 
-	id, err := uuid.NewV7()
+	id, err := idgen.NewUUID()
 	if err != nil {
 		return response.InternalServerError(c)
 	}

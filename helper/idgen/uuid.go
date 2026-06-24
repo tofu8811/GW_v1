@@ -1,7 +1,7 @@
 package idgen
 
 import (
-	"github.com/gofrs/uuid/v5"
+	"github.com/google/uuid"
 )
 
 func NewUUID() (uuid.UUID, error) {

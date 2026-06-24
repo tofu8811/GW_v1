@@ -4,7 +4,6 @@ go 1.26.3
 
 require (
 	github.com/gofiber/fiber/v2 v2.52.13
-	github.com/gofrs/uuid/v5 v5.4.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/joho/godotenv v1.5.1
