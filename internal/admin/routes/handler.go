@@ -65,6 +65,10 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		IsActive:      boolValue(req.IsActive, true),
 	}
 
+	if err := validateRouteProxyConfig(route.Path, route.StripPrefix, route.RewriteTarget); err != nil {
+		return response.BadRequest(c, err.Error())
+	}
+
 	if err := h.repository.Create(c.Context(), &route); err != nil {
 		return handleDBError(c, err)
 	}
@@ -183,6 +187,10 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 		route.IsActive = *req.IsActive
 	}
 
+	if err := validateRouteProxyConfig(route.Path, route.StripPrefix, route.RewriteTarget); err != nil {
+		return response.BadRequest(c, err.Error())
+	}
+
 	if err := h.repository.Update(c.Context(), route); err != nil {
 		if errors.Is(err, ErrRouteNotFound) {
 			return response.NotFound(c, "route not found")
@@ -231,6 +239,14 @@ func stringPtr(value *string) *string {
 	}
 
 	return value
+}
+
+func validateRouteProxyConfig(path string, stripPrefix bool, rewriteTarget *string) error {
+	if err := validation.ValidateStripPrefix(path, stripPrefix); err != nil {
+		return err
+	}
+
+	return validation.ValidateRouteRewriteTarget(path, rewriteTarget)
 }
 
 func toResponse(route Route) RouteResponse {
