@@ -62,6 +62,12 @@ Ví dụ value:
 }
 ```
 
+Quy tắc proxy path:
+
+- `rewrite_target` có ưu tiên cao nhất. Nếu cấu hình cả `rewrite_target` và `strip_prefix`, Gateway dùng `rewrite_target` và bỏ qua `strip_prefix`.
+- `strip_prefix` chỉ có ý nghĩa với route catch-all kết thúc bằng `*` hoặc `{name...}`. Ví dụ `/api/*` nhận `/api/users/42` và forward phần đuôi thành `/users/42`.
+- `rewrite_target` chỉ được dùng param có trong route path. Ví dụ route `/api/product/{id}` có thể rewrite sang `/v2/products/{id}`, nhưng không được rewrite sang `/v2/products/{slug}`.
+
 Lệnh test gợi ý:
 
 ```redis

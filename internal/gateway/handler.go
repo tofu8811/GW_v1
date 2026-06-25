@@ -46,6 +46,8 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 		timeout = 5 * time.Second
 	}
 
+	prepareForwardedRequest(c)
+
 	if err := proxy.DoTimeout(c, targetURL, timeout); err != nil {
 		h.logger.Error("failed to proxy request", "error", err, "upstream", targetURL)
 		return response.Error(c, fiber.StatusBadGateway, "bad_gateway", "upstream service unavailable")
@@ -86,7 +88,11 @@ func rewritePath(route *UpstreamRoute, requestPath string, params map[string]str
 	}
 
 	if route.StripPrefix {
-		return "/"
+		if tail, ok := params["*"]; ok {
+			return "/" + tail
+		}
+
+		return requestPath
 	}
 
 	return requestPath
@@ -95,13 +101,30 @@ func rewritePath(route *UpstreamRoute, requestPath string, params map[string]str
 func matchPath(pattern string, path string) (map[string]string, bool) {
 	patternParts := splitPath(pattern)
 	pathParts := splitPath(path)
-	if len(patternParts) != len(pathParts) {
-		return nil, false
-	}
-
 	params := map[string]string{}
+
 	for i := range patternParts {
 		part := patternParts[i]
+
+		if part == "*" || strings.HasSuffix(part, "...}") {
+			if i != len(patternParts)-1 {
+				return nil, false
+			}
+
+			name := "*"
+			if part != "*" {
+				name = strings.TrimSuffix(strings.TrimPrefix(part, "{"), "...}")
+			}
+			tail := strings.Join(pathParts[i:], "/")
+			params[name] = tail
+			params["*"] = tail
+			return params, true
+		}
+
+		if i >= len(pathParts) {
+			return nil, false
+		}
+
 		if strings.HasPrefix(part, "{") && strings.HasSuffix(part, "}") {
 			name := strings.TrimSuffix(strings.TrimPrefix(part, "{"), "}")
 			params[name] = pathParts[i]
@@ -111,6 +134,10 @@ func matchPath(pattern string, path string) (map[string]string, bool) {
 		if part != pathParts[i] {
 			return nil, false
 		}
+	}
+
+	if len(patternParts) != len(pathParts) {
+		return nil, false
 	}
 
 	return params, true
