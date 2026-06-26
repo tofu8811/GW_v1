@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -15,12 +16,19 @@ type Config struct {
 	RedisAddr   string
 	RedisPass   string
 	RedisDB     int
+
+	ConfigPollInterval   time.Duration
+	ConfigTTL            time.Duration
+	ConfigRebuildLockTTL time.Duration
+	ConfigLockWait       time.Duration
+	ConfigSchemaVersion  int
 }
 
 func Load() Config {
 	loadDotEnv()
 
 	redisDB, _ := strconv.Atoi(getEnv("REDIS_DB", "0"))
+	schemaVersion, _ := strconv.Atoi(getEnv("CONFIG_SCHEMA_VERSION", "1"))
 	databaseURL := getEnv("DATABASE_URL", "")
 	if databaseURL == "" {
 		databaseURL = buildDatabaseURL()
@@ -33,6 +41,12 @@ func Load() Config {
 		RedisAddr:   getEnv("REDIS_ADDR", "localhost:6379"),
 		RedisPass:   getEnv("REDIS_PASSWORD", ""),
 		RedisDB:     redisDB,
+
+		ConfigPollInterval:   durationSeconds("CONFIG_POLL_INTERVAL_SECONDS", 20*time.Second),
+		ConfigTTL:            durationSeconds("CONFIG_TTL_SECONDS", 0),
+		ConfigRebuildLockTTL: durationSeconds("CONFIG_REBUILD_LOCK_TTL_SECONDS", 10*time.Second),
+		ConfigLockWait:       durationSeconds("CONFIG_REBUILD_LOCK_WAIT_SECONDS", 2*time.Second),
+		ConfigSchemaVersion:  schemaVersion,
 	}
 }
 
@@ -92,4 +106,12 @@ func getEnv(key string, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func durationSeconds(key string, fallback time.Duration) time.Duration {
+	value, err := strconv.Atoi(getEnv(key, ""))
+	if err != nil || value < 0 {
+		return fallback
+	}
+	return time.Duration(value) * time.Second
 }

@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"errors"
 
 	"gateway-api/helper/dberror"
@@ -14,10 +15,15 @@ import (
 
 type Handler struct {
 	repository *Repository
+	notifier   ConfigNotifier
 }
 
-func NewHandler(repository *Repository) *Handler {
-	return &Handler{repository: repository}
+type ConfigNotifier interface {
+	NotifyChange(ctx context.Context, group string) error
+}
+
+func NewHandler(repository *Repository, notifier ConfigNotifier) *Handler {
+	return &Handler{repository: repository, notifier: notifier}
 }
 
 func (h *Handler) Create(c *fiber.Ctx) error {
@@ -65,12 +71,11 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		IsActive:      boolValue(req.IsActive, true),
 	}
 
-	if err := validateRouteProxyConfig(route.Path, route.StripPrefix, route.RewriteTarget); err != nil {
-		return response.BadRequest(c, err.Error())
-	}
-
 	if err := h.repository.Create(c.Context(), &route); err != nil {
 		return handleDBError(c, err)
+	}
+	if err := h.notifyChange(c, "routes"); err != nil {
+		return response.InternalServerError(c)
 	}
 
 	return response.Created(c, toResponse(route))
@@ -187,15 +192,14 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 		route.IsActive = *req.IsActive
 	}
 
-	if err := validateRouteProxyConfig(route.Path, route.StripPrefix, route.RewriteTarget); err != nil {
-		return response.BadRequest(c, err.Error())
-	}
-
 	if err := h.repository.Update(c.Context(), route); err != nil {
 		if errors.Is(err, ErrRouteNotFound) {
 			return response.NotFound(c, "route not found")
 		}
 		return handleDBError(c, err)
+	}
+	if err := h.notifyChange(c, "routes"); err != nil {
+		return response.InternalServerError(c)
 	}
 
 	return response.OK(c, toResponse(*route))
@@ -215,8 +219,18 @@ func (h *Handler) Delete(c *fiber.Ctx) error {
 	if err != nil {
 		return handleDBError(c, err)
 	}
+	if err := h.notifyChange(c, "routes"); err != nil {
+		return response.InternalServerError(c)
+	}
 
 	return response.NoContent(c)
+}
+
+func (h *Handler) notifyChange(c *fiber.Ctx, group string) error {
+	if h.notifier == nil {
+		return nil
+	}
+	return h.notifier.NotifyChange(c.Context(), group)
 }
 
 func boolValue(value *bool, defaultValue bool) bool {
@@ -239,14 +253,6 @@ func stringPtr(value *string) *string {
 	}
 
 	return value
-}
-
-func validateRouteProxyConfig(path string, stripPrefix bool, rewriteTarget *string) error {
-	if err := validation.ValidateStripPrefix(path, stripPrefix); err != nil {
-		return err
-	}
-
-	return validation.ValidateRouteRewriteTarget(path, rewriteTarget)
 }
 
 func toResponse(route Route) RouteResponse {

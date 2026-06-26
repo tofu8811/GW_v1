@@ -1,6 +1,10 @@
-package gateway
+package proxy
 
-import "testing"
+import (
+	"testing"
+
+	"gateway-api/internal/proxy/loadbalancer"
+)
 
 func TestMatchPathSupportsCatchAllWildcard(t *testing.T) {
 	params, ok := matchPath("/api/*", "/api/users/42")
@@ -47,5 +51,42 @@ func TestRewritePathRewriteTargetTakesPriority(t *testing.T) {
 	got := rewritePath(route, "/api/users/42", map[string]string{"id": "42", "*": "users/42"})
 	if got != "/v2/42" {
 		t.Fatalf("expected /v2/42, got %q", got)
+	}
+}
+
+func TestPickInstanceUsesConfiguredLBStrategy(t *testing.T) {
+	handler := &Handler{
+		roundRobin: loadbalancer.NewRoundRobin(),
+		weighted:   loadbalancer.NewWeightedRoundRobin(),
+	}
+	instances := []loadbalancer.Instance{
+		{ID: "a", ServiceID: "service-1", Weight: 2},
+		{ID: "b", ServiceID: "service-1", Weight: 1},
+	}
+
+	roundRobinRoute := UpstreamRoute{ServiceID: "service-1", LBStrategy: "round_robin"}
+	first, err := handler.pickInstance(roundRobinRoute, instances)
+	if err != nil {
+		t.Fatalf("unexpected round robin error: %v", err)
+	}
+	second, err := handler.pickInstance(roundRobinRoute, instances)
+	if err != nil {
+		t.Fatalf("unexpected round robin error: %v", err)
+	}
+	if first.ID != "a" || second.ID != "b" {
+		t.Fatalf("expected round robin sequence a, b, got %s, %s", first.ID, second.ID)
+	}
+
+	weightedRoute := UpstreamRoute{ServiceID: "service-1", LBStrategy: "weighted"}
+	weightedFirst, err := handler.pickInstance(weightedRoute, instances)
+	if err != nil {
+		t.Fatalf("unexpected weighted error: %v", err)
+	}
+	weightedSecond, err := handler.pickInstance(weightedRoute, instances)
+	if err != nil {
+		t.Fatalf("unexpected weighted error: %v", err)
+	}
+	if weightedFirst.ID != "a" || weightedSecond.ID != "a" {
+		t.Fatalf("expected weighted sequence to start a, a, got %s, %s", weightedFirst.ID, weightedSecond.ID)
 	}
 }

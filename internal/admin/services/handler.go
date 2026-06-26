@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"strings"
 
@@ -21,10 +22,15 @@ const (
 
 type Handler struct {
 	repository *Repository
+	notifier   ConfigNotifier
 }
 
-func NewHandler(repository *Repository) *Handler {
-	return &Handler{repository: repository}
+type ConfigNotifier interface {
+	NotifyChange(ctx context.Context, group string) error
+}
+
+func NewHandler(repository *Repository, notifier ConfigNotifier) *Handler {
+	return &Handler{repository: repository, notifier: notifier}
 }
 
 func (h *Handler) Create(c *fiber.Ctx) error {
@@ -78,6 +84,9 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 
 	if err := h.repository.Create(c.Context(), &service); err != nil {
 		return handleDBError(c, err)
+	}
+	if err := h.notifyChange(c, "services"); err != nil {
+		return response.InternalServerError(c)
 	}
 
 	return response.Created(c, toResponse(service))
@@ -198,6 +207,9 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 		}
 		return handleDBError(c, err)
 	}
+	if err := h.notifyChange(c, "services"); err != nil {
+		return response.InternalServerError(c)
+	}
 
 	return response.OK(c, toResponse(*service))
 }
@@ -216,8 +228,18 @@ func (h *Handler) Delete(c *fiber.Ctx) error {
 	if err != nil {
 		return handleDBError(c, err)
 	}
+	if err := h.notifyChange(c, "services"); err != nil {
+		return response.InternalServerError(c)
+	}
 
 	return response.NoContent(c)
+}
+
+func (h *Handler) notifyChange(c *fiber.Ctx, group string) error {
+	if h.notifier == nil {
+		return nil
+	}
+	return h.notifier.NotifyChange(c.Context(), group)
 }
 
 func normalizeServiceName(name string) (string, error) {

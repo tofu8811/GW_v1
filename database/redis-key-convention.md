@@ -224,6 +224,65 @@ Lệnh test gợi ý:
 SET cfg:pipeline:80000000-0000-0000-0000-000000000001 '[{"code":"auth","phase":"before_request","priority":30}]'
 GET cfg:pipeline:80000000-0000-0000-0000-000000000001
 ```
+
+### Khóa rebuild cache (chống stampede)
+
+```text
+cfg:rebuild:lock
+```
+
+Kiểu dữ liệu:
+
+```text
+String
+```
+
+Đảm bảo khi nhiều Gateway node cùng nhận `cfg:reload`, chỉ một node rebuild cache từ PostgreSQL; các node còn lại chờ rồi đọc cache mới. Tránh tất cả node cùng lúc đập vào DB (cache stampede).
+
+```redis
+SET cfg:rebuild:lock 1 NX EX 10
+# Lấy được lock  => rebuild rồi DEL cfg:rebuild:lock
+# Không lấy được => chờ ngắn rồi đọc lại cfg:* từ cache
+```
+
+TTL ngắn (vd 10s) để lock tự nhả nếu node giữ lock chết giữa chừng.
+
+### Quy tắc nạp và reload cấu hình an toàn
+
+Các quy ước dưới đây áp dụng cho mọi key `cfg:*`, quan trọng khi chạy nhiều Gateway node chung một Redis.
+
+**Thứ tự ghi khi admin đổi cấu hình** — luôn đúng thứ tự này:
+
+```text
+1. Commit transaction PostgreSQL
+2. INCR cfg:version
+3. PUBLISH cfg:reload <nhóm>
+```
+
+Không bao giờ `INCR` / `PUBLISH` trước khi commit DB, nếu không các node sẽ reload trúng trạng thái cũ trong khi `cfg:version` đã tăng (version nói "mới" mà nội dung là cũ, và không có gì trigger reload lần nữa).
+
+**Pub/Sub + poll version** — `cfg:reload` là fire-and-forget; node đang restart hoặc mất kết nối Redis tạm thời sẽ lỡ message và phục vụ config cũ vĩnh viễn. Mỗi node phải có cả hai đường:
+
+```text
+- Giữ local_version trong bộ nhớ.
+- Nhận cfg:reload  -> reload + cập nhật local_version          (đường nhanh)
+- Mỗi 15-30s: GET cfg:version, lệch local_version -> reload    (lưới an toàn)
+```
+
+**TTL của cfg:*** — khác với key đếm/tạm thời, cache cấu hình KHÔNG đặt TTL ngắn. Đặt **TTL dài hoặc không TTL**; TTL chỉ đóng vai lưới an toàn cuối. Cập nhật chính đi qua `cfg:version` + `cfg:reload`, không dựa vào TTL để làm mới (TTL ngắn gây rebuild liên tục, đập DB).
+
+**Eviction** — Redis dùng chung cho `cfg:*`, `rl:*`, `health:*`. Cấu hình `maxmemory-policy` dạng `volatile-lru` để chỉ evict key có TTL (counter ngắn hạn `rl:*`) trước, giữ lại `cfg:*`. Lý tưởng hơn: tách Redis DB/instance riêng cho `cfg:*` so với counter — counter mất chỉ reset đếm, config mất thì Gateway loạn.
+
+**Atomic khi đổi nhiều key cùng route** — `cfg:route:{m}:{path}`, `cfg:pipeline:{route_id}`, `cfg:plugins:{route_id}` của cùng một route phải được thay cùng lúc bằng `MULTI/EXEC` hoặc Lua, tránh khoảnh khắc request đọc route mới ghép pipeline cũ.
+
+**schema_version trong value** — mọi value JSON của `cfg:*` nên có field `schema_version`. Khi rolling deploy đổi cấu trúc JSON, node đọc gặp `schema_version` lạ thì bỏ qua cache đó và rebuild theo định dạng nó hiểu, tránh parse lỗi/thiếu field âm thầm giữa các phiên bản.
+
+```json
+{ "schema_version": 1, "route_id": "...", "...": "..." }
+```
+
+**Fallback in-memory** — mỗi node giữ thêm bản cache cấu hình gần nhất trong bộ nhớ. Khi Redis mất kết nối, Gateway tiếp tục route bằng bản local cuối (stale-but-alive) thay vì sập; Redis hồi phục thì đồng bộ lại. Đây cũng là lý do **warm cache xong mới cho node nhận traffic**: hot path chỉ đọc cache, cache miss KHÔNG được đọc PostgreSQL đồng bộ trong luồng request.
+
 ## 2. Rate limiting
 
 Luật rate limit được lưu trong PostgreSQL. Redis chỉ lưu bộ đếm.
@@ -602,18 +661,34 @@ Redis có thể trống sau khi chạy migrations và seeds. Đây là điều b
 
 
 DANH SÁCH CÁC KEY CHÍNH
-cfg:version
-cfg:route:{method}:{path}
 
+# Cache cấu hình
+cfg:version
+cfg:reload                       (Pub/Sub channel)
+cfg:rebuild:lock
+cfg:route:{method}:{path}
+cfg:plugins:{route_id}
+cfg:pipeline:{route_id}
+cfg:plugin:{plugin_code}
+
+# Rate limiting
 rl:ip:{ip}:{window_start}
 rl:user:{user_id}:{window_start}
 rl:api_key:{api_key_id}:{window_start}
+rl:bucket:{limit_type}:{identifier}
 
+# Health check
 health:instance:{instance_id}
 health:service:{service_id}:alive
 
+# Load balancing
+lb:rr:{service_id}
+
+# Auth
 jwt:blacklist:{jti}
 refresh:{token_hash}
 
-lb:rr:{service_id}
+# IP blacklist
+blacklist:ip                     (Set)
+blacklist:cidr                   (Set)
 
