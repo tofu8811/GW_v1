@@ -10,14 +10,21 @@ import (
 )
 
 type Config struct {
-	AppEnv       string
-	AppPort      string
-	DatabaseURL  string
-	RedisAddr    string
-	RedisPass    string
-	RedisDB      int
+	AppEnv      string
+	AppPort     string
+	DatabaseURL string
+	RedisAddr   string
+	RedisPass   string
+	RedisDB     int
+
 	JWTSecret    string
 	JWTAccessTTL time.Duration
+
+	ConfigPollInterval   time.Duration
+	ConfigTTL            time.Duration
+	ConfigRebuildLockTTL time.Duration
+	ConfigLockWait       time.Duration
+	ConfigSchemaVersion  int
 }
 
 func Load() Config {
@@ -25,21 +32,28 @@ func Load() Config {
 
 	redisDB, _ := strconv.Atoi(getEnv("REDIS_DB", "0"))
 	jwtAccessTTL := getDurationEnv("JWT_ACCESS_TOKEN_TTL", 15*time.Minute)
-
+	schemaVersion, _ := strconv.Atoi(getEnv("CONFIG_SCHEMA_VERSION", "1"))
 	databaseURL := getEnv("DATABASE_URL", "")
 	if databaseURL == "" {
 		databaseURL = buildDatabaseURL()
 	}
 
 	return Config{
-		AppEnv:       getEnv("APP_ENV", "development"),
-		AppPort:      getEnv("APP_PORT", "8080"),
-		DatabaseURL:  databaseURL,
-		RedisAddr:    getEnv("REDIS_ADDR", "localhost:6379"),
-		RedisPass:    getEnv("REDIS_PASSWORD", ""),
-		RedisDB:      redisDB,
+		AppEnv:      getEnv("APP_ENV", "development"),
+		AppPort:     getEnv("APP_PORT", "8080"),
+		DatabaseURL: databaseURL,
+		RedisAddr:   getEnv("REDIS_ADDR", "localhost:6379"),
+		RedisPass:   getEnv("REDIS_PASSWORD", ""),
+		RedisDB:     redisDB,
+
 		JWTSecret:    getEnv("JWT_SECRET", "change_me_in_local_env"),
 		JWTAccessTTL: jwtAccessTTL,
+
+		ConfigPollInterval:   durationSeconds("CONFIG_POLL_INTERVAL_SECONDS", 20*time.Second),
+		ConfigTTL:            durationSeconds("CONFIG_TTL_SECONDS", 0),
+		ConfigRebuildLockTTL: durationSeconds("CONFIG_REBUILD_LOCK_TTL_SECONDS", 10*time.Second),
+		ConfigLockWait:       durationSeconds("CONFIG_REBUILD_LOCK_WAIT_SECONDS", 2*time.Second),
+		ConfigSchemaVersion:  schemaVersion,
 	}
 }
 
@@ -113,4 +127,12 @@ func getDurationEnv(key string, fallback time.Duration) time.Duration {
 	}
 
 	return duration
+}
+
+func durationSeconds(key string, fallback time.Duration) time.Duration {
+	value, err := strconv.Atoi(getEnv(key, ""))
+	if err != nil || value < 0 {
+		return fallback
+	}
+	return time.Duration(value) * time.Second
 }
