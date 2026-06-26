@@ -50,7 +50,7 @@ func (h *Handler) CreateForService(c *fiber.Ctx) error {
 	}
 
 	weight := int16Value(req.Weight, defaultWeight)
-	if err := validation.ValidateIntMin("weight", int(weight), 0); err != nil {
+	if err := validation.ValidateIntMin("weight", int(weight), 1); err != nil {
 		return response.BadRequest(c, err.Error())
 	}
 
@@ -187,7 +187,7 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 	}
 
 	if req.Weight != nil {
-		if err := validation.ValidateIntMin("weight", int(*req.Weight), 0); err != nil {
+		if err := validation.ValidateIntMin("weight", int(*req.Weight), 1); err != nil {
 			return response.BadRequest(c, err.Error())
 		}
 		instance.Weight = *req.Weight

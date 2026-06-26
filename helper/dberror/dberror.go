@@ -36,7 +36,8 @@ var constraintErrors = map[string]APIError{
 	// service_instances
 	"service_instances_service_id_fkey":          {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "service_id does not exist"},
 	"service_instances_service_host_port_unique": {Status: http.StatusConflict, Code: "conflict", Message: "service instance already exists"},
-
+	"service_instances_weight_check": {Status: http.StatusBadRequest, Code: "bad_request", Message: "weight must be greater than or equal to 1"},
+	
 	// rate_limit_policies
 	"rate_limit_policies_name_unique": {Status: http.StatusConflict, Code: "conflict", Message: "rate limit policy name already exists"},
 

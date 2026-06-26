@@ -6,36 +6,48 @@ const TOKEN = 'Bearer YOUR_TOKEN';
 
 export const options = {
   stages: [
-    { duration: '10s', target: 20 },  // tăng lên 20 users
-    // { duration: '30s', target: 50 },  // giữ 50 users
-    { duration: '10s', target: 0 },  // giảm về 0
+    { duration: '10s', target: 20 },
+    { duration: '10s', target: 0 },
   ],
 };
 
-// Mỗi user sẽ chạy function này lặp đi lặp lại
 export default function () {
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': TOKEN,
   };
 
-  // Gửi đồng thời nhiều endpoint trong 1 vòng lặp
+  const createOrderPayload = JSON.stringify({
+    user_id: 1,
+    total: 2500000,
+    items: [
+      { product_id: 1, quantity: 1, price: 1500000 },
+      { product_id: 3, quantity: 2, price: 500000 },
+    ],
+  });
+
+  const updateOrderPayload = JSON.stringify({
+    status: 'paid',
+  });
+
   const responses = http.batch([
     ['GET', `${BASE_URL}/api/products`, null, { headers }],
     ['GET', `${BASE_URL}/api/product/5`, null, { headers }],
     ['GET', `${BASE_URL}/api/product/7`, null, { headers }],
-    // ['GET', `http://localhost:3001/api/products`, null, { headers }],
-    // ['GET', `http://localhost:3003/api/products`, null, { headers }],
-    // ['GET', `http://localhost:3004/api/products`, null, { headers }],
-    // ['GET', `http://localhost:3005/api/products`, null, { headers }],
+
+    // Order service routes
+    // ['GET', `${BASE_URL}/api/orders`, null, { headers }],
+    // ['GET', `${BASE_URL}/api/order/1`, null, { headers }],
+    // ['POST', `${BASE_URL}/api/order/create`, createOrderPayload, { headers }],
   ]);
 
-  // Check từng response
   check(responses[0], { '[gateway] GET products 200': (r) => r.status === 200 });
-  check(responses[1, 2], { '[gateway] GET product/{id} 200': (r) => r.status === 200 });
-  // check(responses[0], { '[service:3001] GET products 200': (r) => r.status === 200 });
-  // check(responses[1], { '[service:3003] GET products 200': (r) => r.status === 200 });
-  // check(responses[2], { '[service:3004] GET products 200': (r) => r.status === 200 });
-  // check(responses[3], { '[service:3005] GET products 200': (r) => r.status === 200 });
+  check(responses[1], { '[gateway] GET product/5 200': (r) => r.status === 200 });
+  check(responses[2], { '[gateway] GET product/7 200': (r) => r.status === 200 });
+
+  // check(responses[3], { '[gateway] GET orders 200': (r) => r.status === 200 });
+  // check(responses[4], { '[gateway] GET order/1 200': (r) => r.status === 200 });
+  // check(responses[5], { '[gateway] POST order/create 201/200': (r) => r.status === 201 || r.status === 200 });
+
   sleep(1);
 }
