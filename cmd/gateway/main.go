@@ -8,9 +8,9 @@ import (
 	"gateway-api/infrastructure/postgres"
 	redisclient "gateway-api/infrastructure/redis"
 	"gateway-api/internal/admin"
+	"gateway-api/internal/auth"
 	"gateway-api/internal/gateway"
 	"gateway-api/internal/health"
-	"gateway-api/internal/proxy"
 	"gateway-api/internal/server"
 )
 
@@ -35,7 +35,9 @@ func main() {
 	healthHandler := health.NewHandler(db, rdb)
 	srv := server.New(logg, healthHandler)
 
+	auth.RegisterAuthRoutes(srv.App, db, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.AppEnv)
 	admin.RegisterAdminRoutes(srv.App, db)
+	gateway.RegisterGatewayRoutes(srv.App, db, logg)
 
 	if err := srv.Run(cfg.AppPort); err != nil {
 		logg.Error("server stopped", "error", err)
