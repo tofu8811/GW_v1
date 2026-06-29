@@ -10,6 +10,8 @@ import (
 	"gateway-api/helper/pagination"
 	"gateway-api/helper/response"
 	"gateway-api/helper/validation"
+	configcache "gateway-api/internal/config/cache"
+	upstreamhealth "gateway-api/internal/upstream/health"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -21,16 +23,22 @@ const (
 )
 
 type Handler struct {
-	repository *Repository
-	notifier   ConfigNotifier
+	repository  *Repository
+	notifier    ConfigNotifier
+	healthStore *upstreamhealth.Store
+	configCache ServiceInstanceCache
 }
 
 type ConfigNotifier interface {
 	NotifyChange(ctx context.Context, group string) error
 }
 
-func NewHandler(repository *Repository, notifier ConfigNotifier) *Handler {
-	return &Handler{repository: repository, notifier: notifier}
+type ServiceInstanceCache interface {
+	ActiveInstancesByService(serviceID string) []configcache.ActiveInstanceValue
+}
+
+func NewHandler(repository *Repository, notifier ConfigNotifier, healthStore *upstreamhealth.Store, configCache ServiceInstanceCache) *Handler {
+	return &Handler{repository: repository, notifier: notifier, healthStore: healthStore, configCache: configCache}
 }
 
 func (h *Handler) Create(c *fiber.Ctx) error {

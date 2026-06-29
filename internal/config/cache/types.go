@@ -46,12 +46,13 @@ type RouteValue struct {
 }
 
 type ServiceValue struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	Protocol   string `json:"protocol"`
-	LBStrategy string `json:"lb_strategy"`
-	TimeoutMS  int    `json:"timeout_ms"`
-	RetryCount int    `json:"retry_count"`
+	ID                    string `json:"id"`
+	Name                  string `json:"name"`
+	Protocol              string `json:"protocol"`
+	LBStrategy            string `json:"lb_strategy"`
+	TimeoutMS             int    `json:"timeout_ms"`
+	RetryCount            int    `json:"retry_count"`
+	CircuitBreakerEnabled bool   `json:"circuit_breaker_enabled"`
 }
 
 type InstanceValue struct {
@@ -59,6 +60,13 @@ type InstanceValue struct {
 	Host   string `json:"host"`
 	Port   int    `json:"port"`
 	Weight int    `json:"weight"`
+}
+
+type ActiveInstanceValue struct {
+	ServiceID  string
+	InstanceID string
+	Host       string
+	Port       int
 }
 
 type PluginMetaValue struct {

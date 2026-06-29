@@ -15,6 +15,8 @@ import (
 	"gateway-api/internal/health"
 	"gateway-api/internal/proxy"
 	"gateway-api/internal/server"
+	"gateway-api/internal/upstream/breaker"
+	upstreamhealth "gateway-api/internal/upstream/health"
 )
 
 func main() {
@@ -53,11 +55,26 @@ func main() {
 	go cacheStore.SubscribeReload(ctx)
 	go cacheStore.PollVersion(ctx)
 
+	breakers := breaker.NewRegistry(breaker.Config{
+		FailureThreshold: cfg.BreakerFailureThreshold,
+		OpenTimeout:      cfg.BreakerOpenTimeout,
+		HalfOpenMax:      cfg.BreakerHalfOpenMax,
+	})
+	upstreamHealthStore := upstreamhealth.NewStore(rdb, cfg.HealthKeyTTL)
+	upstreamChecker := upstreamhealth.NewChecker(upstreamHealthStore, cacheStore, breakers, upstreamhealth.Config{
+		Interval:           cfg.HealthCheckInterval,
+		ProbeTimeout:       cfg.HealthProbeTimeout,
+		UnhealthyThreshold: cfg.HealthUnhealthyThreshold,
+		HealthyThreshold:   cfg.HealthHealthyThreshold,
+	}, logg)
+	go upstreamChecker.Start(ctx)
+	upstreamHealthFilter := upstreamhealth.NewHealthFilter(upstreamHealthStore, breakers)
+
 	healthHandler := health.NewHandler(db, rdb, cacheStore.Ready)
 	srv := server.New(logg, healthHandler)
 
-	admin.RegisterAdminRoutes(srv.App, db, cacheStore)
-	proxy.RegisterGatewayRoutes(srv.App, cacheStore, logg)
+	admin.RegisterAdminRoutes(srv.App, db, cacheStore, upstreamHealthStore, upstreamChecker)
+	proxy.RegisterGatewayRoutes(srv.App, cacheStore, logg, upstreamHealthFilter, breakers)
 
 	if err := srv.Run(cfg.AppPort); err != nil {
 		logg.Error("server stopped", "error", err)

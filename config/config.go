@@ -22,6 +22,16 @@ type Config struct {
 	ConfigRebuildLockTTL time.Duration
 	ConfigLockWait       time.Duration
 	ConfigSchemaVersion  int
+
+	HealthCheckInterval      time.Duration
+	HealthProbeTimeout       time.Duration
+	HealthUnhealthyThreshold int
+	HealthHealthyThreshold   int
+	HealthKeyTTL             time.Duration
+
+	BreakerFailureThreshold int
+	BreakerOpenTimeout      time.Duration
+	BreakerHalfOpenMax      int
 }
 
 func Load() Config {
@@ -32,6 +42,12 @@ func Load() Config {
 	databaseURL := getEnv("DATABASE_URL", "")
 	if databaseURL == "" {
 		databaseURL = buildDatabaseURL()
+	}
+
+	healthInterval := durationEnv("HEALTH_CHECK_INTERVAL", 10*time.Second)
+	healthTTL := durationEnv("HEALTH_KEY_TTL", 30*time.Second)
+	if healthInterval >= healthTTL {
+		healthInterval = healthTTL / 2
 	}
 
 	return Config{
@@ -47,6 +63,16 @@ func Load() Config {
 		ConfigRebuildLockTTL: durationSeconds("CONFIG_REBUILD_LOCK_TTL_SECONDS", 10*time.Second),
 		ConfigLockWait:       durationSeconds("CONFIG_REBUILD_LOCK_WAIT_SECONDS", 2*time.Second),
 		ConfigSchemaVersion:  schemaVersion,
+
+		HealthCheckInterval:      healthInterval,
+		HealthProbeTimeout:       durationEnv("HEALTH_PROBE_TIMEOUT", 2*time.Second),
+		HealthUnhealthyThreshold: intEnv("HEALTH_UNHEALTHY_THRESHOLD", 3),
+		HealthHealthyThreshold:   intEnv("HEALTH_HEALTHY_THRESHOLD", 2),
+		HealthKeyTTL:             healthTTL,
+
+		BreakerFailureThreshold: intEnv("BREAKER_FAILURE_THRESHOLD", 5),
+		BreakerOpenTimeout:      durationEnv("BREAKER_OPEN_TIMEOUT", 15*time.Second),
+		BreakerHalfOpenMax:      intEnv("BREAKER_HALFOPEN_MAX", 1),
 	}
 }
 
@@ -114,4 +140,28 @@ func durationSeconds(key string, fallback time.Duration) time.Duration {
 		return fallback
 	}
 	return time.Duration(value) * time.Second
+}
+
+func durationEnv(key string, fallback time.Duration) time.Duration {
+	value := getEnv(key, "")
+	if value == "" {
+		return fallback
+	}
+	duration, err := time.ParseDuration(value)
+	if err == nil && duration >= 0 {
+		return duration
+	}
+	seconds, err := strconv.Atoi(value)
+	if err != nil || seconds < 0 {
+		return fallback
+	}
+	return time.Duration(seconds) * time.Second
+}
+
+func intEnv(key string, fallback int) int {
+	value, err := strconv.Atoi(getEnv(key, ""))
+	if err != nil || value < 0 {
+		return fallback
+	}
+	return value
 }

@@ -4,12 +4,14 @@ import (
 	"log/slog"
 
 	configcache "gateway-api/internal/config/cache"
+	"gateway-api/internal/upstream/breaker"
+	upstreamhealth "gateway-api/internal/upstream/health"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func RegisterGatewayRoutes(app *fiber.App, configCache *configcache.Store, logger *slog.Logger) {
-	handler := NewHandler(configCache, logger)
+func RegisterGatewayRoutes(app *fiber.App, configCache *configcache.Store, logger *slog.Logger, healthFilter *upstreamhealth.HealthFilter, breakers *breaker.Registry) {
+	handler := NewHandler(configCache, logger, healthFilter, breakers)
 
 	app.Use(handler.Proxy)
 }

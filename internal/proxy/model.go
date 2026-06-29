@@ -1,5 +1,7 @@
 package proxy
 
+import "gateway-api/internal/proxy/loadbalancer"
+
 type UpstreamRoute struct {
 	RouteID       string
 	RoutePath     string
@@ -16,6 +18,10 @@ type UpstreamRoute struct {
 	Port        int
 	Weight      int
 	TimeoutMS   int
+	RetryCount  int
+
+	CircuitBreakerEnabled bool
+	AvailableInstances    []loadbalancer.Instance
 
 	MatchedInstances int
 }

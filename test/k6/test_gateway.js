@@ -1,7 +1,8 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
-const BASE_URL = 'http://127.0.0.1:8080';
+// const BASE_URL = 'http://127.0.0.1:8080';
+const BASE_URL = 'http://host.docker.internal:8080';
 const TOKEN = 'Bearer YOUR_TOKEN';
 
 export const options = {

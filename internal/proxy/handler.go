@@ -11,26 +11,31 @@ import (
 	"gateway-api/helper/response"
 	configcache "gateway-api/internal/config/cache"
 	"gateway-api/internal/proxy/loadbalancer"
+	"gateway-api/internal/upstream/breaker"
+	upstreamhealth "gateway-api/internal/upstream/health"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/proxy"
 )
 
 var ErrRouteNotFound = errors.New("gateway route not found")
 
 type Handler struct {
-	configCache *configcache.Store
-	logger      *slog.Logger
-	roundRobin  *loadbalancer.RoundRobin
-	weighted    *loadbalancer.WeightedRoundRobin
+	configCache  *configcache.Store
+	logger       *slog.Logger
+	roundRobin   *loadbalancer.RoundRobin
+	weighted     *loadbalancer.WeightedRoundRobin
+	healthFilter *upstreamhealth.HealthFilter
+	breakers     *breaker.Registry
 }
 
-func NewHandler(configCache *configcache.Store, logger *slog.Logger) *Handler {
+func NewHandler(configCache *configcache.Store, logger *slog.Logger, healthFilter *upstreamhealth.HealthFilter, breakers *breaker.Registry) *Handler {
 	return &Handler{
-		configCache: configCache,
-		logger:      logger,
-		roundRobin:  loadbalancer.NewRoundRobin(),
-		weighted:    loadbalancer.NewWeightedRoundRobin(),
+		configCache:  configCache,
+		logger:       logger,
+		roundRobin:   loadbalancer.NewRoundRobin(),
+		weighted:     loadbalancer.NewWeightedRoundRobin(),
+		healthFilter: healthFilter,
+		breakers:     breakers,
 	}
 }
 
@@ -60,75 +65,11 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 		return response.InternalServerError(c)
 	}
 
-	targetURL := buildTargetURL(route, requestPath, params, string(c.Request().URI().QueryString()))
-
-	timeout := time.Duration(route.TimeoutMS) * time.Millisecond
-	if timeout <= 0 {
-		timeout = 5 * time.Second
-	}
-
 	prepareForwardedRequest(c)
-
-	h.logger.Info("proxying request to upstream instance",
-		"request_id", c.GetRespHeader(fiber.HeaderXRequestID),
-		"method", method,
-		"path", requestPath,
-		"target_url", targetURL,
-		"route_id", route.RouteID,
-		"route_path", route.RoutePath,
-		"route_method", route.RouteMethod,
-		"service_id", route.ServiceID,
-		"service", route.ServiceName,
-		"lb_strategy", normalizedLBStrategy(route.LBStrategy),
-		"matched_instances", route.MatchedInstances,
-		"instance_id", route.InstanceID,
-		"instance_host", route.Host,
-		"instance_port", route.Port,
-		"instance_weight", route.Weight,
-		"timeout_ms", timeout.Milliseconds(),
-		"client_ip", c.IP(),
-	)
-
-	if err := proxy.DoTimeout(c, targetURL, timeout); err != nil {
-		h.logger.Error("failed to proxy request",
-			"request_id", c.GetRespHeader(fiber.HeaderXRequestID),
-			"error", err,
-			"method", method,
-			"path", requestPath,
-			"target_url", targetURL,
-			"route_id", route.RouteID,
-			"service_id", route.ServiceID,
-			"service", route.ServiceName,
-			"lb_strategy", normalizedLBStrategy(route.LBStrategy),
-			"instance_id", route.InstanceID,
-			"instance_host", route.Host,
-			"instance_port", route.Port,
-			"duration_ms", time.Since(startedAt).Milliseconds(),
-		)
-		return response.Error(c, fiber.StatusBadGateway, "bad_gateway", "upstream service unavailable")
-	}
-
-	h.logger.Info("proxied request completed",
-		"request_id", c.GetRespHeader(fiber.HeaderXRequestID),
-		"method", method,
-		"path", requestPath,
-		"target_url", targetURL,
-		"route_id", route.RouteID,
-		"service_id", route.ServiceID,
-		"service", route.ServiceName,
-		"lb_strategy", normalizedLBStrategy(route.LBStrategy),
-		"instance_id", route.InstanceID,
-		"instance_host", route.Host,
-		"instance_port", route.Port,
-		"status", c.Response().StatusCode(),
-		"duration_ms", time.Since(startedAt).Milliseconds(),
-	)
-
-	return nil
+	return h.forwardWithRetry(c, route, requestPath, params, startedAt)
 }
 
 func (h *Handler) findRoute(ctx context.Context, path string, method string) (*UpstreamRoute, map[string]string, error) {
-	_ = ctx
 	candidates := h.configCache.FindCandidates(method)
 
 	for i := range candidates {
@@ -149,19 +90,16 @@ func (h *Handler) findRoute(ctx context.Context, path string, method string) (*U
 			})
 		}
 
-		selectedInstance, err := h.pickInstance(matched[0], instances)
-		if err != nil {
-			return nil, nil, err
+		if h.healthFilter != nil {
+			instances = h.healthFilter.KeepAlive(ctx, matched[0].ServiceID, instances, matched[0].CircuitBreakerEnabled)
+			if len(instances) == 0 {
+				continue
+			}
 		}
 
 		selectedRoute := matched[0]
-		for _, route := range matched {
-			if route.InstanceID == selectedInstance.ID {
-				selectedRoute = route
-				break
-			}
-		}
-		selectedRoute.MatchedInstances = len(matched)
+		selectedRoute.MatchedInstances = len(instances)
+		selectedRoute.AvailableInstances = instances
 
 		return &selectedRoute, params, nil
 	}
@@ -173,20 +111,22 @@ func upstreamRoutesFromCache(route configcache.RouteValue) []UpstreamRoute {
 	routes := make([]UpstreamRoute, 0, len(route.Instances))
 	for _, instance := range route.Instances {
 		routes = append(routes, UpstreamRoute{
-			RouteID:       route.RouteID,
-			RoutePath:     route.Path,
-			RouteMethod:   route.Method,
-			StripPrefix:   route.StripPrefix,
-			RewriteTarget: route.RewriteTarget,
-			ServiceID:     route.Service.ID,
-			ServiceName:   route.Service.Name,
-			Protocol:      route.Service.Protocol,
-			LBStrategy:    route.Service.LBStrategy,
-			InstanceID:    instance.ID,
-			Host:          instance.Host,
-			Port:          instance.Port,
-			Weight:        instance.Weight,
-			TimeoutMS:     route.Service.TimeoutMS,
+			RouteID:               route.RouteID,
+			RoutePath:             route.Path,
+			RouteMethod:           route.Method,
+			StripPrefix:           route.StripPrefix,
+			RewriteTarget:         route.RewriteTarget,
+			ServiceID:             route.Service.ID,
+			ServiceName:           route.Service.Name,
+			Protocol:              route.Service.Protocol,
+			LBStrategy:            route.Service.LBStrategy,
+			InstanceID:            instance.ID,
+			Host:                  instance.Host,
+			Port:                  instance.Port,
+			Weight:                instance.Weight,
+			TimeoutMS:             route.Service.TimeoutMS,
+			RetryCount:            route.Service.RetryCount,
+			CircuitBreakerEnabled: route.Service.CircuitBreakerEnabled,
 		})
 	}
 	return routes

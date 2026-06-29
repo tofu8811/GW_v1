@@ -186,6 +186,77 @@ func (s *Store) Pipeline(routeID string) []PipelineValue {
 	return out
 }
 
+func (s *Store) ActiveInstances() []ActiveInstanceValue {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	seen := map[string]struct{}{}
+	instances := []ActiveInstanceValue{}
+	for _, route := range s.routes {
+		for _, instance := range route.Instances {
+			if _, ok := seen[instance.ID]; ok {
+				continue
+			}
+			seen[instance.ID] = struct{}{}
+			instances = append(instances, ActiveInstanceValue{
+				ServiceID:  route.Service.ID,
+				InstanceID: instance.ID,
+				Host:       instance.Host,
+				Port:       instance.Port,
+			})
+		}
+	}
+
+	return instances
+}
+
+func (s *Store) FindActiveInstance(instanceID string) (ActiveInstanceValue, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, route := range s.routes {
+		for _, instance := range route.Instances {
+			if instance.ID == instanceID {
+				return ActiveInstanceValue{
+					ServiceID:  route.Service.ID,
+					InstanceID: instance.ID,
+					Host:       instance.Host,
+					Port:       instance.Port,
+				}, true
+			}
+		}
+	}
+
+	return ActiveInstanceValue{}, false
+}
+
+func (s *Store) ActiveInstancesByService(serviceID string) []ActiveInstanceValue {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	seen := map[string]struct{}{}
+	instances := []ActiveInstanceValue{}
+	for _, route := range s.routes {
+		if route.Service.ID != serviceID {
+			continue
+		}
+		for _, instance := range route.Instances {
+			if _, ok := seen[instance.ID]; ok {
+				continue
+			}
+			seen[instance.ID] = struct{}{}
+			instances = append(instances, ActiveInstanceValue{
+				ServiceID:  route.Service.ID,
+				InstanceID: instance.ID,
+				Host:       instance.Host,
+				Port:       instance.Port,
+			})
+		}
+	}
+
+	return instances
+}
+
 func (s *Store) rebuildAll(ctx context.Context) error {
 	locked, err := s.redis.SetNX(ctx, KeyRebuildLock, "1", s.config.RebuildLockTTL).Result()
 	if err != nil {
@@ -295,6 +366,7 @@ func readRoutes(ctx context.Context, tx pgx.Tx, schemaVersion int) ([]RouteValue
 			s.lb_strategy,
 			s.timeout_ms,
 			s.retry_count,
+			s.circuit_breaker_enabled,
 			COALESCE(
 				jsonb_agg(
 					jsonb_build_object(
@@ -342,6 +414,7 @@ func readRoutes(ctx context.Context, tx pgx.Tx, schemaVersion int) ([]RouteValue
 			&route.Service.LBStrategy,
 			&route.Service.TimeoutMS,
 			&route.Service.RetryCount,
+			&route.Service.CircuitBreakerEnabled,
 			&instances,
 		)
 		if err != nil {
