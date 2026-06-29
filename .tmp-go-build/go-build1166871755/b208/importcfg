@@ -1,0 +1,5 @@
+# import config
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile golang.org/x/text/transform=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b205\_pkg_.a
+packagefile golang.org/x/text/unicode/bidi=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b209\_pkg_.a
+packagefile unicode/utf8=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b050\_pkg_.a

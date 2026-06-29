@@ -1,0 +1,10 @@
+# import config
+packagefile bytes=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b053\_pkg_.a
+packagefile github.com/mattn/go-isatty=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b271\_pkg_.a
+packagefile golang.org/x/sys/windows=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b272\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a
+packagefile math=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b059\_pkg_.a
+packagefile os=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b061\_pkg_.a
+packagefile strconv=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b060\_pkg_.a
+packagefile strings=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b072\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a

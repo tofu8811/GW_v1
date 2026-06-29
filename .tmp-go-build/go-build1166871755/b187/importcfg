@@ -1,0 +1,9 @@
+# import config
+packagefile internal/abi=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b005\_pkg_.a
+packagefile internal/goarch=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b006\_pkg_.a
+packagefile internal/stringslite=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b033\_pkg_.a
+packagefile internal/sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b036\_pkg_.a
+packagefile runtime=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b009\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a
+packagefile sync/atomic=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b037\_pkg_.a
+packagefile weak=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b152\_pkg_.a

@@ -1,0 +1,15 @@
+# import config
+importmap golang.org/x/net/http/httpguts=vendor/golang.org/x/net/http/httpguts
+importmap golang.org/x/net/http2/hpack=vendor/golang.org/x/net/http2/hpack
+packagefile context=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b002\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile vendor/golang.org/x/net/http/httpguts=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b240\_pkg_.a
+packagefile vendor/golang.org/x/net/http2/hpack=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b248\_pkg_.a
+packagefile net/http/httptrace=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b252\_pkg_.a
+packagefile net/textproto=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b246\_pkg_.a
+packagefile net/url=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b188\_pkg_.a
+packagefile sort=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b075\_pkg_.a
+packagefile strconv=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b060\_pkg_.a
+packagefile strings=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b072\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a

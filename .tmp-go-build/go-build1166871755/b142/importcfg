@@ -1,0 +1,11 @@
+# import config
+packagefile bytes=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b053\_pkg_.a
+packagefile crypto/internal/fips140=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b094\_pkg_.a
+packagefile crypto/internal/fips140/check=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b097\_pkg_.a
+packagefile crypto/internal/fips140/drbg=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b108\_pkg_.a
+packagefile crypto/internal/fips140/nistec=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b143\_pkg_.a
+packagefile crypto/internal/fips140deps/byteorder=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b100\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a
+packagefile math/bits=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b032\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a

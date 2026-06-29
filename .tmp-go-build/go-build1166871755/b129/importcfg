@@ -1,0 +1,7 @@
+# import config
+packagefile crypto=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b089\_pkg_.a
+packagefile crypto/internal/fips140only=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b112\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile hash=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b090\_pkg_.a
+packagefile internal/byteorder=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b012\_pkg_.a
+packagefile math/bits=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b032\_pkg_.a

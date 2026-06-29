@@ -1,0 +1,6 @@
+# import config
+packagefile crypto/internal/fips140/pbkdf2=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b131\_pkg_.a
+packagefile crypto/internal/fips140hash=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b127\_pkg_.a
+packagefile crypto/internal/fips140only=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b112\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile hash=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b090\_pkg_.a

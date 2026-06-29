@@ -1,0 +1,5 @@
+# import config
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile gateway-api/helper/crypto=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b312\_pkg_.a
+packagefile github.com/golang-jwt/jwt/v5=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b313\_pkg_.a
+packagefile time=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b039\_pkg_.a

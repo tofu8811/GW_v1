@@ -1,0 +1,6 @@
+# import config
+packagefile crypto/internal/fips140/nistec=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b143\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a
+packagefile math/big=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b135\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a

@@ -1,0 +1,23 @@
+# import config
+importmap golang.org/x/net/http/httpguts=vendor/golang.org/x/net/http/httpguts
+packagefile bufio=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b190\_pkg_.a
+packagefile bytes=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b053\_pkg_.a
+packagefile context=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b002\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile vendor/golang.org/x/net/http/httpguts=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b240\_pkg_.a
+packagefile internal/godebug=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b040\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a
+packagefile log=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b081\_pkg_.a
+packagefile mime=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b249\_pkg_.a
+packagefile net=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b182\_pkg_.a
+packagefile net/http=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b236\_pkg_.a
+packagefile net/http/httptrace=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b252\_pkg_.a
+packagefile net/http/internal=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b253\_pkg_.a
+packagefile net/http/internal/ascii=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b254\_pkg_.a
+packagefile net/textproto=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b246\_pkg_.a
+packagefile net/url=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b188\_pkg_.a
+packagefile strings=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b072\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a
+packagefile sync/atomic=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b037\_pkg_.a
+packagefile time=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b039\_pkg_.a

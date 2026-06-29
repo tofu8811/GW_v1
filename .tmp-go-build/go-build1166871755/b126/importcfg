@@ -1,0 +1,7 @@
+# import config
+packagefile crypto/internal/boring=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b091\_pkg_.a
+packagefile crypto/internal/fips140/hmac=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b098\_pkg_.a
+packagefile crypto/internal/fips140hash=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b127\_pkg_.a
+packagefile crypto/internal/fips140only=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b112\_pkg_.a
+packagefile crypto/subtle=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b114\_pkg_.a
+packagefile hash=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b090\_pkg_.a

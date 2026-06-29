@@ -1,0 +1,8 @@
+# import config
+packagefile internal/abi=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b005\_pkg_.a
+packagefile internal/asan=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b025\_pkg_.a
+packagefile internal/goarch=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b006\_pkg_.a
+packagefile internal/msan=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b026\_pkg_.a
+packagefile internal/race=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b027\_pkg_.a
+packagefile internal/runtime/math=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b028\_pkg_.a
+packagefile internal/runtime/sys=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b023\_pkg_.a

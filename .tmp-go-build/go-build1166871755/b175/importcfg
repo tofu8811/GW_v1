@@ -1,0 +1,15 @@
+# import config
+packagefile bytes=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b053\_pkg_.a
+packagefile crypto/internal/constanttime=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b105\_pkg_.a
+packagefile crypto/internal/fips140=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b094\_pkg_.a
+packagefile crypto/internal/fips140/bigmod=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b150\_pkg_.a
+packagefile crypto/internal/fips140/check=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b097\_pkg_.a
+packagefile crypto/internal/fips140/drbg=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b108\_pkg_.a
+packagefile crypto/internal/fips140/sha256=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b099\_pkg_.a
+packagefile crypto/internal/fips140/sha3=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b103\_pkg_.a
+packagefile crypto/internal/fips140/sha512=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b106\_pkg_.a
+packagefile crypto/internal/fips140/subtle=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b104\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile hash=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b090\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a

@@ -1,0 +1,15 @@
+# import config
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile internal/asan=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b025\_pkg_.a
+packagefile internal/bytealg=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b010\_pkg_.a
+packagefile internal/msan=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b026\_pkg_.a
+packagefile internal/oserror=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b045\_pkg_.a
+packagefile internal/race=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b027\_pkg_.a
+packagefile internal/strconv=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b031\_pkg_.a
+packagefile internal/syscall/windows/sysdll=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b043\_pkg_.a
+packagefile runtime=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b009\_pkg_.a
+packagefile slices=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b046\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a
+packagefile sync/atomic=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b037\_pkg_.a
+packagefile unicode/utf16=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b049\_pkg_.a
+packagefile unicode/utf8=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b050\_pkg_.a

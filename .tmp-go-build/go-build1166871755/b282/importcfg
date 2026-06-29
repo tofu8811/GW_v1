@@ -1,0 +1,9 @@
+# import config
+packagefile bufio=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b190\_pkg_.a
+packagefile compress/zlib=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b283\_pkg_.a
+packagefile encoding/binary=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b166\_pkg_.a
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile github.com/klauspost/compress/flate=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b279\_pkg_.a
+packagefile hash=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b090\_pkg_.a
+packagefile hash/adler32=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b284\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a

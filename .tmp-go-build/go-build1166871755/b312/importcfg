@@ -1,0 +1,7 @@
+# import config
+packagefile crypto/hmac=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b126\_pkg_.a
+packagefile crypto/rand=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b132\_pkg_.a
+packagefile crypto/sha256=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b088\_pkg_.a
+packagefile encoding/base64=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b080\_pkg_.a
+packagefile encoding/hex=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b120\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a

@@ -1,0 +1,7 @@
+# import config
+importmap golang.org/x/text/transform=vendor/golang.org/x/text/transform
+importmap golang.org/x/text/unicode/bidi=vendor/golang.org/x/text/unicode/bidi
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile vendor/golang.org/x/text/transform=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b243\_pkg_.a
+packagefile vendor/golang.org/x/text/unicode/bidi=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b244\_pkg_.a
+packagefile unicode/utf8=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b050\_pkg_.a

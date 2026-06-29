@@ -1,0 +1,8 @@
+# import config
+packagefile golang.org/x/text/internal=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b200\_pkg_.a
+packagefile golang.org/x/text/language=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b201\_pkg_.a
+packagefile golang.org/x/text/transform=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b205\_pkg_.a
+packagefile golang.org/x/text/unicode/norm=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b206\_pkg_.a
+packagefile strings=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b072\_pkg_.a
+packagefile unicode=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b055\_pkg_.a
+packagefile unicode/utf8=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b050\_pkg_.a

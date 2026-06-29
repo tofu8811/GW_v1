@@ -17,6 +17,9 @@ type Config struct {
 	RedisPass   string
 	RedisDB     int
 
+	JWTSecret    string
+	JWTAccessTTL time.Duration
+
 	ConfigPollInterval   time.Duration
 	ConfigTTL            time.Duration
 	ConfigRebuildLockTTL time.Duration
@@ -38,6 +41,7 @@ func Load() Config {
 	loadDotEnv()
 
 	redisDB, _ := strconv.Atoi(getEnv("REDIS_DB", "0"))
+	jwtAccessTTL := getDurationEnv("JWT_ACCESS_TOKEN_TTL", 15*time.Minute)
 	schemaVersion, _ := strconv.Atoi(getEnv("CONFIG_SCHEMA_VERSION", "1"))
 	databaseURL := getEnv("DATABASE_URL", "")
 	if databaseURL == "" {
@@ -57,6 +61,9 @@ func Load() Config {
 		RedisAddr:   getEnv("REDIS_ADDR", "localhost:6379"),
 		RedisPass:   getEnv("REDIS_PASSWORD", ""),
 		RedisDB:     redisDB,
+
+		JWTSecret:    getEnv("JWT_SECRET", "change_me_in_local_env"),
+		JWTAccessTTL: jwtAccessTTL,
 
 		ConfigPollInterval:   durationSeconds("CONFIG_POLL_INTERVAL_SECONDS", 20*time.Second),
 		ConfigTTL:            durationSeconds("CONFIG_TTL_SECONDS", 0),
@@ -132,6 +139,20 @@ func getEnv(key string, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func getDurationEnv(key string, fallback time.Duration) time.Duration {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+
+	duration, err := time.ParseDuration(value)
+	if err != nil || duration <= 0 {
+		return fallback
+	}
+
+	return duration
 }
 
 func durationSeconds(key string, fallback time.Duration) time.Duration {

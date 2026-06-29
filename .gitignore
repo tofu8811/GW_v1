@@ -2,6 +2,7 @@
 .gocache/
 tmp/
 bin/
+.tmp-go-build
 *.test
 *.out
 coverage.out

@@ -1,0 +1,8 @@
+# import config
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile github.com/google/uuid=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b257\_pkg_.a
+packagefile net/netip=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b186\_pkg_.a
+packagefile strings=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b072\_pkg_.a
+packagefile time=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b039\_pkg_.a
+packagefile unicode=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b055\_pkg_.a
+packagefile unicode/utf8=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b050\_pkg_.a

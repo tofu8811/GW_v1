@@ -1,0 +1,5 @@
+# import config
+packagefile encoding/json=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b079\_pkg_.a
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile github.com/redis/go-redis/v9/internal=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b218\_pkg_.a
+packagefile regexp=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b073\_pkg_.a

@@ -1,0 +1,5 @@
+# import config
+packagefile internal/abi=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b005\_pkg_.a
+packagefile internal/goarch=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b006\_pkg_.a
+packagefile internal/race=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b027\_pkg_.a
+packagefile sync/atomic=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b037\_pkg_.a

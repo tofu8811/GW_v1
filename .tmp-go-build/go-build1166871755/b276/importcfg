@@ -1,0 +1,14 @@
+# import config
+packagefile encoding/binary=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b166\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile github.com/andybalholm/brotli/flate=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b277\_pkg_.a
+packagefile github.com/andybalholm/brotli/matchfinder=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b278\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a
+packagefile math=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b059\_pkg_.a
+packagefile math/bits=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b032\_pkg_.a
+packagefile net/http=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b236\_pkg_.a
+packagefile runtime=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b009\_pkg_.a
+packagefile slices=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b046\_pkg_.a
+packagefile strings=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b072\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a

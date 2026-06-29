@@ -1,0 +1,8 @@
+# import config
+packagefile context=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b002\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile github.com/jackc/puddle/v2/internal/genstack=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b213\_pkg_.a
+packagefile golang.org/x/sync/semaphore=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b214\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a
+packagefile sync/atomic=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b037\_pkg_.a
+packagefile time=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b039\_pkg_.a

@@ -1,0 +1,16 @@
+# import config
+packagefile context=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b002\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile github.com/redis/go-redis/v9/internal=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b218\_pkg_.a
+packagefile github.com/redis/go-redis/v9/internal/interfaces=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b228\_pkg_.a
+packagefile github.com/redis/go-redis/v9/internal/maintnotifications/logs=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b223\_pkg_.a
+packagefile github.com/redis/go-redis/v9/internal/pool=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b222\_pkg_.a
+packagefile github.com/redis/go-redis/v9/push=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b232\_pkg_.a
+packagefile net=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b182\_pkg_.a
+packagefile runtime=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b009\_pkg_.a
+packagefile slices=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b046\_pkg_.a
+packagefile strings=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b072\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a
+packagefile sync/atomic=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b037\_pkg_.a
+packagefile time=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b039\_pkg_.a

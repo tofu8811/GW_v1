@@ -1,0 +1,12 @@
+# import config
+packagefile crypto=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b089\_pkg_.a
+packagefile crypto/internal/fips140/ed25519=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b158\_pkg_.a
+packagefile crypto/internal/fips140cache=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b151\_pkg_.a
+packagefile crypto/internal/fips140only=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b112\_pkg_.a
+packagefile crypto/internal/rand=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b133\_pkg_.a
+packagefile crypto/rand=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b132\_pkg_.a
+packagefile crypto/subtle=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b114\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile internal/godebug=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b040\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a
+packagefile strconv=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b060\_pkg_.a

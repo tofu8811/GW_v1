@@ -1,0 +1,17 @@
+# import config
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile internal/abi=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b005\_pkg_.a
+packagefile internal/bytealg=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b010\_pkg_.a
+packagefile internal/goarch=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b006\_pkg_.a
+packagefile internal/race=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b027\_pkg_.a
+packagefile internal/runtime/maps=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b024\_pkg_.a
+packagefile internal/runtime/sys=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b023\_pkg_.a
+packagefile internal/strconv=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b031\_pkg_.a
+packagefile internal/unsafeheader=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b008\_pkg_.a
+packagefile iter=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b048\_pkg_.a
+packagefile math=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b059\_pkg_.a
+packagefile runtime=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b009\_pkg_.a
+packagefile strconv=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b060\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a
+packagefile unicode=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b055\_pkg_.a
+packagefile unicode/utf8=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b050\_pkg_.a
