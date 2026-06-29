@@ -30,11 +30,47 @@ func TestGenerateAndParseAccessToken(t *testing.T) {
 	if claims.Subject != "user-1" {
 		t.Fatalf("expected subject user-1, got %q", claims.Subject)
 	}
+	if claims.ID == "" {
+		t.Fatal("expected token ID to be generated")
+	}
 	if claims.Role != "admin" {
 		t.Fatalf("expected role admin, got %q", claims.Role)
 	}
 	if len(claims.Permissions) != 2 {
 		t.Fatalf("expected 2 permissions, got %d", len(claims.Permissions))
+	}
+}
+
+func TestGenerateAccessTokenUsesUniqueTokenIDs(t *testing.T) {
+	firstToken, err := GenerateAccessToken(AccessTokenInput{
+		UserID: "user-1",
+		TTL:    time.Minute,
+		Secret: "test-secret",
+	})
+	if err != nil {
+		t.Fatalf("expected first token to be generated: %v", err)
+	}
+
+	secondToken, err := GenerateAccessToken(AccessTokenInput{
+		UserID: "user-1",
+		TTL:    time.Minute,
+		Secret: "test-secret",
+	})
+	if err != nil {
+		t.Fatalf("expected second token to be generated: %v", err)
+	}
+
+	firstClaims, err := ParseAccessToken(firstToken, "test-secret")
+	if err != nil {
+		t.Fatalf("expected first token to be parsed: %v", err)
+	}
+	secondClaims, err := ParseAccessToken(secondToken, "test-secret")
+	if err != nil {
+		t.Fatalf("expected second token to be parsed: %v", err)
+	}
+
+	if firstClaims.ID == secondClaims.ID {
+		t.Fatalf("expected unique token IDs, got %q", firstClaims.ID)
 	}
 }
 

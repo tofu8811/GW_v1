@@ -7,6 +7,7 @@ import (
 	tokenhelper "gateway-api/helper/token"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/redis/go-redis/v9"
 )
 
 const (
@@ -17,9 +18,14 @@ const (
 
 	authorizationHeader = "Authorization"
 	bearerPrefix        = "Bearer "
+	jwtBlacklistPrefix  = "jwt:blacklist:"
 )
 
-func JWTAuth(secret string) fiber.Handler {
+func JWTBlacklistKey(tokenID string) string {
+	return jwtBlacklistPrefix + tokenID
+}
+
+func JWTAuth(secret string, rdb *redis.Client) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := strings.TrimSpace(c.Get(authorizationHeader))
 		if authHeader == "" {
@@ -38,6 +44,17 @@ func JWTAuth(secret string) fiber.Handler {
 		claims, err := tokenhelper.ParseAccessToken(rawToken, secret)
 		if err != nil {
 			return response.Unauthorized(c, "invalid or expired token")
+		}
+		if claims.ID == "" {
+			return response.Unauthorized(c, "access token is missing jti")
+		}
+
+		blacklisted, err := rdb.Exists(c.Context(), JWTBlacklistKey(claims.ID)).Result()
+		if err != nil {
+			return response.InternalServerError(c)
+		}
+		if blacklisted > 0 {
+			return response.Unauthorized(c, "access token has been revoked")
 		}
 
 		c.Locals(LocalsJWTClaims, claims)

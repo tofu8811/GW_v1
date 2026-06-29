@@ -7,13 +7,19 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
-func RegisterAuthRoutes(app *fiber.App, db *pgxpool.Pool, jwtSecret string, accessTTL time.Duration, issuer string) {
+func RegisterAuthRoutes(app *fiber.App, db *pgxpool.Pool, rdb *redis.Client, jwtSecret string, accessTTL time.Duration, refreshTTL time.Duration, issuer string) {
 	repository := NewRepository(db)
-	handler := NewHandler(repository, jwtSecret, accessTTL, issuer)
+	refreshStore := NewRefreshStore(rdb)
+	handler := NewHandler(repository, refreshStore, jwtSecret, accessTTL, refreshTTL, issuer)
 
 	auth := app.Group("/auth")
 	auth.Post("/login", handler.Login)
-	auth.Get("/me", middleware.JWTAuth(jwtSecret), handler.Me)
+	auth.Post("/refresh", handler.Refresh)
+
+	jwtAuth := middleware.JWTAuth(jwtSecret, rdb)
+	auth.Get("/me", jwtAuth, handler.Me)
+	auth.Post("/logout", jwtAuth, handler.Logout)
 }

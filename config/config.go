@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -17,8 +18,9 @@ type Config struct {
 	RedisPass   string
 	RedisDB     int
 
-	JWTSecret    string
-	JWTAccessTTL time.Duration
+	JWTSecret     string
+	JWTAccessTTL  time.Duration
+	JWTRefreshTTL time.Duration
 
 	ConfigPollInterval   time.Duration
 	ConfigTTL            time.Duration
@@ -42,6 +44,7 @@ func Load() Config {
 
 	redisDB, _ := strconv.Atoi(getEnv("REDIS_DB", "0"))
 	jwtAccessTTL := getDurationEnv("JWT_ACCESS_TOKEN_TTL", 15*time.Minute)
+	jwtRefreshTTL := getDurationEnv("JWT_REFRESH_TOKEN_TTL", 7*24*time.Hour)
 	schemaVersion, _ := strconv.Atoi(getEnv("CONFIG_SCHEMA_VERSION", "1"))
 	databaseURL := getEnv("DATABASE_URL", "")
 	if databaseURL == "" {
@@ -62,8 +65,9 @@ func Load() Config {
 		RedisPass:   getEnv("REDIS_PASSWORD", ""),
 		RedisDB:     redisDB,
 
-		JWTSecret:    getEnv("JWT_SECRET", "change_me_in_local_env"),
-		JWTAccessTTL: jwtAccessTTL,
+		JWTSecret:     getEnv("JWT_SECRET", "change_me_in_local_env"),
+		JWTAccessTTL:  jwtAccessTTL,
+		JWTRefreshTTL: jwtRefreshTTL,
 
 		ConfigPollInterval:   durationSeconds("CONFIG_POLL_INTERVAL_SECONDS", 20*time.Second),
 		ConfigTTL:            durationSeconds("CONFIG_TTL_SECONDS", 0),
@@ -147,12 +151,25 @@ func getDurationEnv(key string, fallback time.Duration) time.Duration {
 		return fallback
 	}
 
-	duration, err := time.ParseDuration(value)
+	duration, err := parseDuration(value)
 	if err != nil || duration <= 0 {
 		return fallback
 	}
 
 	return duration
+}
+
+func parseDuration(value string) (time.Duration, error) {
+	if strings.HasSuffix(value, "d") {
+		days, err := strconv.Atoi(strings.TrimSuffix(value, "d"))
+		if err != nil || days <= 0 {
+			return 0, strconv.ErrSyntax
+		}
+
+		return time.Duration(days) * 24 * time.Hour, nil
+	}
+
+	return time.ParseDuration(value)
 }
 
 func durationSeconds(key string, fallback time.Duration) time.Duration {

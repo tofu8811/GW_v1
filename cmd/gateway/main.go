@@ -74,7 +74,7 @@ func main() {
 	healthHandler := health.NewHandler(db, rdb, cacheStore.Ready)
 	srv := server.New(logg, healthHandler)
 
-	auth.RegisterAuthRoutes(srv.App, db, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.AppEnv)
+	auth.RegisterAuthRoutes(srv.App, db, rdb, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL, cfg.AppEnv)
 	admin.RegisterAdminRoutes(srv.App, db, cacheStore, upstreamHealthStore, upstreamChecker)
 	proxy.RegisterGatewayRoutes(srv.App, cacheStore, logg, upstreamHealthFilter, breakers)
 

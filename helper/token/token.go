@@ -47,12 +47,18 @@ func GenerateAccessToken(input AccessTokenInput) (string, error) {
 		return "", ErrInvalidTTL
 	}
 
+	tokenID, err := cryptoutil.GenerateRandomTokenWithBytes(16)
+	if err != nil {
+		return "", err
+	}
+
 	now := time.Now().UTC()
 	claims := Claims{
 		UserID:      input.UserID,
 		Role:        input.Role,
 		Permissions: input.Permissions,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        tokenID,
 			Subject:   input.UserID,
 			Issuer:    input.Issuer,
 			IssuedAt:  jwt.NewNumericDate(now),
