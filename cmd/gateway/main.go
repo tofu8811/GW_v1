@@ -53,8 +53,11 @@ func main() {
 		logg.Error("failed to warm config cache", "error", err)
 		log.Fatal(err)
 	}
-	go cacheStore.SubscribeReload(ctx)
-	go cacheStore.PollVersion(ctx)
+	configNotifier := configcache.NewNotifier(rdb)
+	configSubscriber := configcache.NewSubscriber(rdb, logg)
+	configPoller := configcache.NewPoller(rdb, logg, cfg.ConfigPollInterval)
+	go configSubscriber.SubscribeReload(ctx, cacheStore.RebuildAll)
+	go configPoller.PollVersion(ctx, cacheStore.CurrentVersion, cacheStore.RebuildAll)
 
 	breakers := breaker.NewRegistry(breaker.Config{
 		FailureThreshold: cfg.BreakerFailureThreshold,
@@ -75,7 +78,7 @@ func main() {
 	srv := server.New(logg, healthHandler)
 
 	auth.RegisterAuthRoutes(srv.App, db, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.AppEnv)
-	admin.RegisterAdminRoutes(srv.App, db, cacheStore, upstreamHealthStore, upstreamChecker)
+	admin.RegisterAdminRoutes(srv.App, db, cacheStore, configNotifier, upstreamHealthStore, upstreamChecker)
 	proxy.RegisterGatewayRoutes(srv.App, cacheStore, logg, upstreamHealthFilter, breakers)
 
 	if err := srv.Run(cfg.AppPort); err != nil {

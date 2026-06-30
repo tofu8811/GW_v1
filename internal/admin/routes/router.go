@@ -1,13 +1,11 @@
 package routes
 
 import (
-	configcache "gateway-api/internal/config/cache"
-
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func RegisterRouteRoutes(router fiber.Router, db *pgxpool.Pool, notifier *configcache.Store) {
+func RegisterRouteRoutes(router fiber.Router, db *pgxpool.Pool, notifier ConfigNotifier) {
 	repository := NewRepository(db)
 	handler := NewHandler(repository, notifier)
 

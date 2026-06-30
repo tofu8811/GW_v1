@@ -1,14 +1,13 @@
 package instances
 
 import (
-	configcache "gateway-api/internal/config/cache"
 	upstreamhealth "gateway-api/internal/upstream/health"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func RegisterServiceInstanceRoutes(router fiber.Router, db *pgxpool.Pool, notifier *configcache.Store) {
+func RegisterServiceInstanceRoutes(router fiber.Router, db *pgxpool.Pool, notifier ConfigNotifier) {
 	repository := NewRepository(db)
 	handler := NewHandler(repository, notifier, nil, nil)
 
@@ -16,7 +15,7 @@ func RegisterServiceInstanceRoutes(router fiber.Router, db *pgxpool.Pool, notifi
 	router.Get("/:id/instances", handler.FindByServiceID)
 }
 
-func RegisterInstanceRoutes(router fiber.Router, db *pgxpool.Pool, notifier *configcache.Store, healthStore *upstreamhealth.Store, healthChecker HealthChecker) {
+func RegisterInstanceRoutes(router fiber.Router, db *pgxpool.Pool, notifier ConfigNotifier, healthStore *upstreamhealth.Store, healthChecker HealthChecker) {
 	repository := NewRepository(db)
 	handler := NewHandler(repository, notifier, healthStore, healthChecker)
 

@@ -66,7 +66,7 @@ func (s *Store) Ready() bool {
 }
 
 func (s *Store) WarmAll(ctx context.Context) error {
-	if err := s.rebuildAll(ctx); err != nil {
+	if err := s.RebuildAll(ctx); err != nil {
 		return err
 	}
 
@@ -77,62 +77,8 @@ func (s *Store) WarmAll(ctx context.Context) error {
 	return nil
 }
 
-func (s *Store) SubscribeReload(ctx context.Context) {
-	pubsub := s.redis.Subscribe(ctx, KeyReload)
-	defer pubsub.Close()
-
-	ch := pubsub.Channel()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case msg, ok := <-ch:
-			if !ok {
-				return
-			}
-			// Fast path for admin changes; missed messages are covered by PollVersion.
-			if err := s.rebuildAll(ctx); err != nil {
-				s.logger.Error("config reload failed", "group", msg.Payload, "error", err)
-			}
-		}
-	}
-}
-
-func (s *Store) PollVersion(ctx context.Context) {
-	ticker := time.NewTicker(s.config.PollInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			version, err := s.redis.Get(ctx, KeyVersion).Int64()
-			if errors.Is(err, redis.Nil) {
-				version = 0
-			} else if err != nil {
-				s.logger.Warn("config version poll failed", "error", err)
-				continue
-			}
-
-			if version != s.currentVersion() {
-				if err := s.rebuildAll(ctx); err != nil {
-					s.logger.Error("config version rebuild failed", "redis_version", version, "error", err)
-				}
-			}
-		}
-	}
-}
-
 func (s *Store) RebuildRoute(ctx context.Context, routeID string) error {
-	return s.rebuildAll(ctx)
-}
-
-func (s *Store) NotifyChange(ctx context.Context, group string) error {
-	if _, err := s.redis.Incr(ctx, KeyVersion).Result(); err != nil {
-		return err
-	}
-	return s.redis.Publish(ctx, KeyReload, group).Err()
+	return s.RebuildAll(ctx)
 }
 
 func (s *Store) GetRouteFromCache(ctx context.Context, method string, path string) (*RouteValue, error) {
@@ -145,7 +91,7 @@ func (s *Store) GetRouteFromCache(ctx context.Context, method string, path strin
 			return &route, nil
 		}
 		// Unknown schemas are ignored so the control plane can rebuild a compatible value.
-		_ = s.rebuildAll(ctx)
+		_ = s.RebuildAll(ctx)
 	}
 	if err != nil && !errors.Is(err, redis.Nil) {
 		s.logger.Warn("redis route cache read failed; using local config", "key", key, "error", err)
@@ -257,7 +203,7 @@ func (s *Store) ActiveInstancesByService(serviceID string) []ActiveInstanceValue
 	return instances
 }
 
-func (s *Store) rebuildAll(ctx context.Context) error {
+func (s *Store) RebuildAll(ctx context.Context) error {
 	locked, err := s.redis.SetNX(ctx, KeyRebuildLock, "1", s.config.RebuildLockTTL).Result()
 	if err != nil {
 		s.logger.Warn("config rebuild lock unavailable; using local config if present", "error", err)
@@ -566,7 +512,7 @@ func (s *Store) loadFromRedis(ctx context.Context) error {
 			return err
 		}
 		if route.SchemaVersion != s.config.SchemaVersion {
-			return s.rebuildAll(ctx)
+			return s.RebuildAll(ctx)
 		}
 
 		pipelineValue, err := s.readPipeline(ctx, route.RouteID)
@@ -655,7 +601,7 @@ func (s *Store) rememberRoute(route RouteValue) {
 	s.routesByKey[routeKey(route.Method, route.Path)] = route
 }
 
-func (s *Store) currentVersion() int64 {
+func (s *Store) CurrentVersion() int64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.localVersion

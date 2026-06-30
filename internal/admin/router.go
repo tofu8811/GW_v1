@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"context"
+
 	adminInstances "gateway-api/internal/admin/instances"
 	adminRoutes "gateway-api/internal/admin/routes"
 	adminServices "gateway-api/internal/admin/services"
@@ -11,7 +13,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func RegisterAdminRoutes(app *fiber.App, db *pgxpool.Pool, notifier *configcache.Store, healthStore *upstreamhealth.Store, healthChecker adminInstances.HealthChecker, middlewares ...fiber.Handler) {
+type ConfigNotifier interface {
+	NotifyChange(ctx context.Context, group string) error
+}
+
+func RegisterAdminRoutes(app *fiber.App, db *pgxpool.Pool, cacheStore *configcache.Store, notifier ConfigNotifier, healthStore *upstreamhealth.Store, healthChecker adminInstances.HealthChecker, middlewares ...fiber.Handler) {
 	admin := app.Group("/admin")
 
 	for _, middleware := range middlewares {
@@ -20,7 +26,7 @@ func RegisterAdminRoutes(app *fiber.App, db *pgxpool.Pool, notifier *configcache
 		}
 	}
 
-	adminServices.RegisterServiceRoutes(admin.Group("/services"), db, notifier, healthStore)
+	adminServices.RegisterServiceRoutes(admin.Group("/services"), db, notifier, cacheStore, healthStore)
 	adminInstances.RegisterServiceInstanceRoutes(admin.Group("/services"), db, notifier)
 	adminInstances.RegisterInstanceRoutes(admin.Group("/instances"), db, notifier, healthStore, healthChecker)
 	adminRoutes.RegisterRouteRoutes(admin.Group("/routes"), db, notifier)
