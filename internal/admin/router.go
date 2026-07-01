@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 
+	adminAPIKeys "gateway-api/internal/admin/apikeys"
 	adminCache "gateway-api/internal/admin/cache"
 	adminInstances "gateway-api/internal/admin/instances"
 	adminRoutes "gateway-api/internal/admin/routes"
@@ -31,6 +32,7 @@ func RegisterAdminRoutes(app *fiber.App, db *pgxpool.Pool, redisClient *redis.Cl
 	}
 
 	adminCache.RegisterCacheRoutes(admin.Group("/cache"), cacheStore, notifier, redisClient)
+	adminAPIKeys.RegisterAPIKeyRoutes(admin.Group("/api-keys"), db)
 	adminServices.RegisterServiceRoutes(admin.Group("/services"), db, notifier, cacheStore, healthStore)
 	adminInstances.RegisterServiceInstanceRoutes(admin.Group("/services"), db, notifier)
 	adminInstances.RegisterInstanceRoutes(admin.Group("/instances"), db, notifier, healthStore, healthChecker)

@@ -19,7 +19,7 @@ func RegisterAuthRoutes(app *fiber.App, db *pgxpool.Pool, rdb *redis.Client, jwt
 	auth.Post("/login", handler.Login)
 	auth.Post("/refresh", handler.Refresh)
 
-	jwtAuth := middleware.JWTAuth(jwtSecret, rdb)
+	jwtAuth := middleware.JWTAuth(jwtSecret, rdb, db)
 	auth.Get("/me", jwtAuth, handler.Me)
 	auth.Post("/logout", jwtAuth, handler.Logout)
 }

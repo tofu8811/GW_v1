@@ -10,6 +10,7 @@ import (
 
 	"gateway-api/helper/response"
 	configcache "gateway-api/internal/config/cache"
+	appmiddleware "gateway-api/internal/middleware"
 	"gateway-api/internal/proxy/loadbalancer"
 	"gateway-api/internal/upstream/breaker"
 	upstreamhealth "gateway-api/internal/upstream/health"
@@ -20,22 +21,33 @@ import (
 var ErrRouteNotFound = errors.New("gateway route not found")
 
 type Handler struct {
-	configCache  *configcache.Store
-	logger       *slog.Logger
-	roundRobin   *loadbalancer.RoundRobin
-	weighted     *loadbalancer.WeightedRoundRobin
-	healthFilter *upstreamhealth.HealthFilter
-	breakers     *breaker.Registry
+	configCache   *configcache.Store
+	logger        *slog.Logger
+	roundRobin    *loadbalancer.RoundRobin
+	weighted      *loadbalancer.WeightedRoundRobin
+	healthFilter  *upstreamhealth.HealthFilter
+	breakers      *breaker.Registry
+	authenticator RouteAuthenticator
 }
 
-func NewHandler(configCache *configcache.Store, logger *slog.Logger, healthFilter *upstreamhealth.HealthFilter, breakers *breaker.Registry) *Handler {
+type RouteAuthenticator interface {
+	Authenticate(c *fiber.Ctx, routeID string, method string, routePath string) error
+}
+
+func NewHandler(configCache *configcache.Store, logger *slog.Logger, healthFilter *upstreamhealth.HealthFilter, breakers *breaker.Registry, authenticators ...RouteAuthenticator) *Handler {
+	var authenticator RouteAuthenticator
+	if len(authenticators) > 0 {
+		authenticator = authenticators[0]
+	}
+
 	return &Handler{
-		configCache:  configCache,
-		logger:       logger,
-		roundRobin:   loadbalancer.NewRoundRobin(),
-		weighted:     loadbalancer.NewWeightedRoundRobin(),
-		healthFilter: healthFilter,
-		breakers:     breakers,
+		configCache:   configCache,
+		logger:        logger,
+		roundRobin:    loadbalancer.NewRoundRobin(),
+		weighted:      loadbalancer.NewWeightedRoundRobin(),
+		healthFilter:  healthFilter,
+		breakers:      breakers,
+		authenticator: authenticator,
 	}
 }
 
@@ -65,6 +77,16 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 		return response.InternalServerError(c)
 	}
 
+	appmiddleware.SetRouteLogContext(c, route.RouteID, route.ServiceName)
+	if route.AuthRequired {
+		if h.authenticator == nil {
+			h.logger.Error("route requires authentication but no authenticator is configured", "route_id", route.RouteID)
+			return response.InternalServerError(c)
+		}
+		if err := h.authenticator.Authenticate(c, route.RouteID, route.RouteMethod, route.RoutePath); err != nil {
+			return err
+		}
+	}
 	prepareForwardedRequest(c)
 	return h.forwardWithRetry(c, route, requestPath, params, startedAt)
 }
@@ -114,6 +136,7 @@ func upstreamRoutesFromCache(route configcache.RouteValue) []UpstreamRoute {
 			RouteID:               route.RouteID,
 			RoutePath:             route.Path,
 			RouteMethod:           route.Method,
+			AuthRequired:          route.AuthRequired,
 			StripPrefix:           route.StripPrefix,
 			RewriteTarget:         route.RewriteTarget,
 			ServiceID:             route.Service.ID,

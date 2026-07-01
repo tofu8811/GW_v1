@@ -14,6 +14,7 @@ import (
 	"gateway-api/internal/auth"
 	configcache "gateway-api/internal/config/cache"
 	"gateway-api/internal/health"
+	"gateway-api/internal/middleware"
 	"gateway-api/internal/proxy"
 	"gateway-api/internal/server"
 	"gateway-api/internal/upstream/breaker"
@@ -26,6 +27,16 @@ func main() {
 
 	cfg := config.Load()
 	logg := logger.New(cfg.AppEnv)
+	if err := cfg.Validate(); err != nil {
+		logg.Error("invalid configuration", "error", err)
+		log.Fatal(err)
+	}
+	requestLogFile, err := logger.OpenJSONLogFile(cfg.LogFilePath)
+	if err != nil {
+		logg.Error("failed to open request log file", "error", err, "path", cfg.LogFilePath)
+		log.Fatal(err)
+	}
+	defer requestLogFile.Close()
 
 	db, err := postgres.NewPool(cfg.DatabaseURL)
 	if err != nil {
@@ -75,12 +86,14 @@ func main() {
 	upstreamHealthFilter := upstreamhealth.NewHealthFilter(upstreamHealthStore, breakers)
 
 	healthHandler := health.NewHandler(db, rdb, cacheStore.Ready)
-	srv := server.New(logg, healthHandler)
+	srv := server.New(logg, healthHandler, requestLogFile)
 
 	auth.RegisterAuthRoutes(srv.App, db, rdb, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL, cfg.AppEnv)
-	admin.RegisterAdminRoutes(srv.App, db, rdb, cacheStore, configNotifier, upstreamHealthStore, upstreamChecker)
+	jwtAuth := middleware.JWTAuth(cfg.JWTSecret, rdb, db)
+	admin.RegisterAdminRoutes(srv.App, db, rdb, cacheStore, configNotifier, upstreamHealthStore, upstreamChecker, jwtAuth)
 
-	proxy.RegisterGatewayRoutes(srv.App, cacheStore, logg, upstreamHealthFilter, breakers)
+	gatewayAuth := middleware.NewGatewayAuth(db, rdb, cfg.JWTSecret)
+	proxy.RegisterGatewayRoutes(srv.App, cacheStore, logg, upstreamHealthFilter, breakers, gatewayAuth)
 
 	if err := srv.Run(cfg.AppPort); err != nil {
 		logg.Error("server stopped", "error", err)

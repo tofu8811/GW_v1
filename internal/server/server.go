@@ -1,9 +1,11 @@
 package server
 
 import (
+	"io"
 	"log/slog"
 
 	"gateway-api/internal/health"
+	appmiddleware "gateway-api/internal/middleware"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -16,13 +18,14 @@ type Server struct {
 	Logger *slog.Logger
 }
 
-func New(logger *slog.Logger, healthHandler *health.Handler) *Server {
+func New(logger *slog.Logger, healthHandler *health.Handler, requestLogWriter io.Writer) *Server {
 	app := fiber.New(fiber.Config{
 		AppName: "API Gateway",
 	})
 
-	app.Use(recover.New())
 	app.Use(requestid.New())
+	app.Use(appmiddleware.RequestLogger(requestLogWriter, logger))
+	app.Use(recover.New())
 	app.Use(cors.New())
 
 	app.Get("/health", healthHandler.Health)

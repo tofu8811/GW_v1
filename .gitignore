@@ -14,6 +14,8 @@ coverage.out
 
 # Logs
 *.log
+*.jsonl
+logs/
 
 # OS and editor files
 .DS_Store

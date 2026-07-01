@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -10,9 +11,12 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const defaultJWTSecret = "change_me_in_local_env"
+
 type Config struct {
 	AppEnv      string
 	AppPort     string
+	LogFilePath string
 	DatabaseURL string
 	RedisAddr   string
 	RedisPass   string
@@ -60,12 +64,13 @@ func Load() Config {
 	return Config{
 		AppEnv:      getEnv("APP_ENV", "development"),
 		AppPort:     getEnv("APP_PORT", "8080"),
+		LogFilePath: getEnv("LOG_FILE", "logs/gateway.jsonl"),
 		DatabaseURL: databaseURL,
 		RedisAddr:   getEnv("REDIS_ADDR", "localhost:6379"),
 		RedisPass:   getEnv("REDIS_PASSWORD", ""),
 		RedisDB:     redisDB,
 
-		JWTSecret:     getEnv("JWT_SECRET", "change_me_in_local_env"),
+		JWTSecret:     getEnv("JWT_SECRET", defaultJWTSecret),
 		JWTAccessTTL:  jwtAccessTTL,
 		JWTRefreshTTL: jwtRefreshTTL,
 
@@ -85,6 +90,17 @@ func Load() Config {
 		BreakerOpenTimeout:      durationEnv("BREAKER_OPEN_TIMEOUT", 15*time.Second),
 		BreakerHalfOpenMax:      intEnv("BREAKER_HALFOPEN_MAX", 1),
 	}
+}
+
+func (c Config) Validate() error {
+	secret := strings.TrimSpace(c.JWTSecret)
+	if secret == "" {
+		return errors.New("JWT_SECRET is required")
+	}
+	if strings.EqualFold(strings.TrimSpace(c.AppEnv), "production") && secret == defaultJWTSecret {
+		return errors.New("JWT_SECRET must be changed in production")
+	}
+	return nil
 }
 
 func loadDotEnv() {

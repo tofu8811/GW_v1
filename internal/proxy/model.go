@@ -6,6 +6,7 @@ type UpstreamRoute struct {
 	RouteID       string
 	RoutePath     string
 	RouteMethod   string
+	AuthRequired  bool
 	StripPrefix   bool
 	RewriteTarget *string
 
