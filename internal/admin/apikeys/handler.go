@@ -159,17 +159,45 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 	return response.OK(c, toResponse(*key))
 }
 
-func (h *Handler) Delete(c *fiber.Ctx) error {
+func (h *Handler) Revoke(c *fiber.Ctx) error {
 	id, err := validation.ParseRequiredUUID("id", c.Params("id"))
 	if err != nil {
 		return response.BadRequest(c, err.Error())
 	}
-	if err := h.repository.Delete(c.Context(), id); errors.Is(err, ErrAPIKeyNotFound) {
+	key, err := h.repository.Revoke(c.Context(), id)
+	if errors.Is(err, ErrAPIKeyNotFound) {
 		return response.NotFound(c, "API key not found")
 	} else if err != nil {
 		return handleDBError(c, err)
 	}
-	return response.NoContent(c)
+	return response.OK(c, toResponse(*key))
+
+}
+
+func (h *Handler) Rotate(c *fiber.Ctx) error {
+	id, err := validation.ParseRequiredUUID("id", c.Params("id"))
+	if err != nil {
+		return response.BadRequest(c, err.Error())
+	}
+
+	secret, err := cryptoutil.GenerateRandomToken()
+	if err != nil {
+		return response.InternalServerError(c)
+	}
+	rawKey := apiKeyPrefix + secret
+	keyHash, err := cryptoutil.HashAPIKey(rawKey)
+	if err != nil {
+		return response.InternalServerError(c)
+	}
+
+	key, err := h.repository.Rotate(c.Context(), id, keyHash, rawKey[:12])
+	if errors.Is(err, ErrAPIKeyNotFound) {
+		return response.NotFound(c, "API key not found")
+	} else if err != nil {
+		return handleDBError(c, err)
+	}
+
+	return response.OK(c, CreatedAPIKeyResponse{APIKeyResponse: toResponse(*key), Key: rawKey})
 }
 
 func normalizeScopes(scopes []string) ([]string, error) {

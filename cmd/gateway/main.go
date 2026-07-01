@@ -93,7 +93,7 @@ func main() {
 	admin.RegisterAdminRoutes(srv.App, db, rdb, cacheStore, configNotifier, upstreamHealthStore, upstreamChecker, jwtAuth)
 
 	gatewayAuth := middleware.NewGatewayAuth(db, rdb, cfg.JWTSecret)
-	proxy.RegisterGatewayRoutes(srv.App, cacheStore, logg, upstreamHealthFilter, breakers, gatewayAuth)
+	proxy.RegisterGatewayRoutes(srv.App, cacheStore, rdb, logg, upstreamHealthFilter, breakers, gatewayAuth)
 
 	if err := srv.Run(cfg.AppPort); err != nil {
 		logg.Error("server stopped", "error", err)

@@ -98,13 +98,42 @@ func (r *Repository) Update(ctx context.Context, apiKey *APIKey) error {
 	return err
 }
 
-func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
-	result, err := r.db.Exec(ctx, `DELETE FROM api_keys WHERE id = $1`, id)
+func (r *Repository) Revoke(ctx context.Context, id uuid.UUID) (*APIKey, error) {
+	var key APIKey
+	err := r.db.QueryRow(ctx, `
+		UPDATE api_keys
+		SET is_active = FALSE
+		WHERE id = $1
+		RETURNING id, key_prefix, label, user_id, scopes, rate_limit_id,
+		          expires_at, is_active, last_used_at, created_at, updated_at
+	`, id).Scan(&key.ID, &key.KeyPrefix, &key.Label, &key.UserID, &key.Scopes,
+		&key.RateLimitID, &key.ExpiresAt, &key.IsActive, &key.LastUsedAt,
+		&key.CreatedAt, &key.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrAPIKeyNotFound
+	}
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if result.RowsAffected() == 0 {
-		return ErrAPIKeyNotFound
+	return &key, nil
+}
+
+func (r *Repository) Rotate(ctx context.Context, id uuid.UUID, keyHash string, keyPrefix string) (*APIKey, error) {
+	var key APIKey
+	err := r.db.QueryRow(ctx, `
+		UPDATE api_keys
+		SET key_hash = $2, key_prefix = $3, is_active = TRUE, last_used_at = NULL
+		WHERE id = $1
+		RETURNING id, key_prefix, label, user_id, scopes, rate_limit_id,
+		          expires_at, is_active, last_used_at, created_at, updated_at
+	`, id, keyHash, keyPrefix).Scan(&key.ID, &key.KeyPrefix, &key.Label, &key.UserID,
+		&key.Scopes, &key.RateLimitID, &key.ExpiresAt, &key.IsActive,
+		&key.LastUsedAt, &key.CreatedAt, &key.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrAPIKeyNotFound
 	}
-	return nil
+	if err != nil {
+		return nil, err
+	}
+	return &key, nil
 }
