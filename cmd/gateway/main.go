@@ -80,7 +80,7 @@ func main() {
 	auth.RegisterAuthRoutes(srv.App, db, rdb, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL, cfg.AppEnv)
 	admin.RegisterAdminRoutes(srv.App, db, rdb, cacheStore, configNotifier, upstreamHealthStore, upstreamChecker)
 
-	proxy.RegisterGatewayRoutes(srv.App, cacheStore, logg, upstreamHealthFilter, breakers)
+	proxy.RegisterGatewayRoutes(srv.App, cacheStore, rdb, logg, upstreamHealthFilter, breakers)
 
 	if err := srv.Run(cfg.AppPort); err != nil {
 		logg.Error("server stopped", "error", err)

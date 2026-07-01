@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -308,6 +309,11 @@ func readRoutes(ctx context.Context, tx pgx.Tx, schemaVersion int) ([]RouteValue
 			r.rewrite_target,
 			r.auth_required,
 			r.rate_limit_id::text,
+			rlp.id::text,
+COALESCE(rlp.name, ''),
+COALESCE(rlp.limit_type, ''),
+COALESCE(rlp.max_requests, 0),
+COALESCE(rlp.window_seconds, 0),
 			r.priority,
 			s.id::text,
 			s.name,
@@ -331,11 +337,12 @@ func readRoutes(ctx context.Context, tx pgx.Tx, schemaVersion int) ([]RouteValue
 			)
 		FROM routes r
 		JOIN services s ON s.id = r.service_id
+		LEFT JOIN rate_limit_policies rlp ON rlp.id = r.rate_limit_id AND rlp.is_active = TRUE
 		LEFT JOIN service_instances si ON si.service_id = s.id AND si.is_active = TRUE
 		WHERE r.is_active = TRUE
 		  AND s.is_active = TRUE
 		  AND s.protocol = 'http'
-		GROUP BY r.id, s.id
+		GROUP BY r.id, s.id, rlp.id
 		ORDER BY r.priority DESC, length(r.path) DESC, r.created_at DESC
 	`)
 	if err != nil {
@@ -347,6 +354,8 @@ func readRoutes(ctx context.Context, tx pgx.Tx, schemaVersion int) ([]RouteValue
 	for rows.Next() {
 		var route RouteValue
 		var rateLimitID *string
+		var rateLimitPolicyID sql.NullString
+		var rateLimitPolicy RateLimitPolicyValue
 		var instances []byte
 
 		err := rows.Scan(
@@ -357,6 +366,11 @@ func readRoutes(ctx context.Context, tx pgx.Tx, schemaVersion int) ([]RouteValue
 			&route.RewriteTarget,
 			&route.AuthRequired,
 			&rateLimitID,
+			&rateLimitPolicyID,
+			&rateLimitPolicy.Name,
+			&rateLimitPolicy.LimitType,
+			&rateLimitPolicy.MaxRequests,
+			&rateLimitPolicy.WindowSeconds,
 			&route.Priority,
 			&route.Service.ID,
 			&route.Service.Name,
@@ -374,6 +388,10 @@ func readRoutes(ctx context.Context, tx pgx.Tx, schemaVersion int) ([]RouteValue
 
 		route.SchemaVersion = schemaVersion
 		route.RateLimitID = rateLimitID
+		if rateLimitPolicyID.Valid {
+			rateLimitPolicy.ID = rateLimitPolicyID.String
+			route.RateLimit = &rateLimitPolicy
+		}
 		if err := json.Unmarshal(instances, &route.Instances); err != nil {
 			return nil, err
 		}
@@ -383,7 +401,6 @@ func readRoutes(ctx context.Context, tx pgx.Tx, schemaVersion int) ([]RouteValue
 
 	return routes, rows.Err()
 }
-
 func readPlugins(ctx context.Context, tx pgx.Tx, schemaVersion int) (map[string][]PipelineValue, map[string]PluginMetaValue, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT
@@ -663,6 +680,10 @@ func cloneRoute(route RouteValue) *RouteValue {
 	if route.Instances != nil {
 		cloned.Instances = make([]InstanceValue, len(route.Instances))
 		copy(cloned.Instances, route.Instances)
+	}
+	if route.RateLimit != nil {
+		rateLimit := *route.RateLimit
+		cloned.RateLimit = &rateLimit
 	}
 	return &cloned
 }
