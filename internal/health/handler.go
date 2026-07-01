@@ -12,14 +12,16 @@ import (
 )
 
 type Handler struct {
-	DB    *pgxpool.Pool
-	Redis *redis.Client
+	DB          *pgxpool.Pool
+	Redis       *redis.Client
+	ConfigReady func() bool
 }
 
-func NewHandler(db *pgxpool.Pool, redisClient *redis.Client) *Handler {
+func NewHandler(db *pgxpool.Pool, redisClient *redis.Client, configReady func() bool) *Handler {
 	return &Handler{
-		DB:    db,
-		Redis: redisClient,
+		DB:          db,
+		Redis:       redisClient,
+		ConfigReady: configReady,
 	}
 }
 
@@ -35,6 +37,7 @@ func (h *Handler) Ready(c *fiber.Ctx) error {
 
 	postgresStatus := "ok"
 	redisStatus := "ok"
+	configStatus := "ok"
 
 	if err := h.DB.Ping(ctx); err != nil {
 		postgresStatus = "error"
@@ -44,13 +47,18 @@ func (h *Handler) Ready(c *fiber.Ctx) error {
 		redisStatus = "error"
 	}
 
-	data := fiber.Map{
-		"status":   "ok",
-		"postgres": postgresStatus,
-		"redis":    redisStatus,
+	if h.ConfigReady != nil && !h.ConfigReady() {
+		configStatus = "warming"
 	}
 
-	if postgresStatus != "ok" || redisStatus != "ok" {
+	data := fiber.Map{
+		"status":       "ok",
+		"postgres":     postgresStatus,
+		"redis":        redisStatus,
+		"config_cache": configStatus,
+	}
+
+	if postgresStatus != "ok" || redisStatus != "ok" || configStatus != "ok" {
 		data["status"] = "error"
 
 		return response.ErrorWithDetails(

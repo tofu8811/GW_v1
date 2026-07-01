@@ -1,0 +1,7 @@
+# import config
+importmap golang.org/x/net/idna=vendor/golang.org/x/net/idna
+packagefile vendor/golang.org/x/net/idna=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b241\_pkg_.a
+packagefile net=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b182\_pkg_.a
+packagefile net/textproto=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b246\_pkg_.a
+packagefile strings=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b072\_pkg_.a
+packagefile unicode/utf8=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b050\_pkg_.a

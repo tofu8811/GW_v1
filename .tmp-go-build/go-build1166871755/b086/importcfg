@@ -1,0 +1,12 @@
+# import config
+packagefile context=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b002\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile github.com/jackc/pgx/v5=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b087\_pkg_.a
+packagefile github.com/jackc/pgx/v5/pgconn=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b124\_pkg_.a
+packagefile github.com/jackc/puddle/v2=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b212\_pkg_.a
+packagefile math/rand/v2=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b119\_pkg_.a
+packagefile runtime=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b009\_pkg_.a
+packagefile strconv=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b060\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a
+packagefile sync/atomic=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b037\_pkg_.a
+packagefile time=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b039\_pkg_.a

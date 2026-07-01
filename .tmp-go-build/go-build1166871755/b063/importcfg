@@ -1,0 +1,9 @@
+# import config
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile internal/oserror=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b045\_pkg_.a
+packagefile internal/runtime/syscall/windows=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b030\_pkg_.a
+packagefile internal/syscall/windows/sysdll=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b043\_pkg_.a
+packagefile runtime=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b009\_pkg_.a
+packagefile structs=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b064\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a
+packagefile syscall=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b044\_pkg_.a

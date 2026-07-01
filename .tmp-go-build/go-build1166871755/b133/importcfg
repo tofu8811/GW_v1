@@ -1,0 +1,6 @@
+# import config
+packagefile crypto/internal/boring=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b091\_pkg_.a
+packagefile crypto/internal/fips140/drbg=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b108\_pkg_.a
+packagefile crypto/internal/randutil=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b134\_pkg_.a
+packagefile internal/godebug=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b040\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a

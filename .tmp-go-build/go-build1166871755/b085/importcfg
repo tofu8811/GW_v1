@@ -1,0 +1,4 @@
+# import config
+packagefile context=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b002\_pkg_.a
+packagefile github.com/jackc/pgx/v5/pgxpool=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b086\_pkg_.a
+packagefile time=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b039\_pkg_.a

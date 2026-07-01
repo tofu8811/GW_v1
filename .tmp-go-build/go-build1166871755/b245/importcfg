@@ -1,0 +1,8 @@
+# import config
+importmap golang.org/x/text/transform=vendor/golang.org/x/text/transform
+packagefile encoding/binary=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b166\_pkg_.a
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile vendor/golang.org/x/text/transform=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b243\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a
+packagefile unicode/utf8=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b050\_pkg_.a

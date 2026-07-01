@@ -1,0 +1,4 @@
+# import config
+packagefile crypto/internal/fips140=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b094\_pkg_.a
+packagefile crypto/internal/fips140/check=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b097\_pkg_.a
+packagefile internal/godebug=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b040\_pkg_.a

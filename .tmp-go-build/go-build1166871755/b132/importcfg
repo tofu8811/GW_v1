@@ -1,0 +1,8 @@
+# import config
+packagefile crypto/internal/boring=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b091\_pkg_.a
+packagefile crypto/internal/fips140/drbg=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b108\_pkg_.a
+packagefile crypto/internal/fips140only=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b112\_pkg_.a
+packagefile crypto/internal/rand=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b133\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a
+packagefile math/big=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b135\_pkg_.a

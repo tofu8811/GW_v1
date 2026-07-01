@@ -1,0 +1,10 @@
+# import config
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile internal/bytealg=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b010\_pkg_.a
+packagefile internal/godebug=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b040\_pkg_.a
+packagefile internal/stringslite=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b033\_pkg_.a
+packagefile internal/syscall/windows/registry=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b042\_pkg_.a
+packagefile math/bits=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b032\_pkg_.a
+packagefile runtime=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b009\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a
+packagefile syscall=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b044\_pkg_.a

@@ -1,0 +1,11 @@
+# import config
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile github.com/klauspost/compress/fse=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b288\_pkg_.a
+packagefile github.com/klauspost/compress/internal/cpuinfo=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b289\_pkg_.a
+packagefile github.com/klauspost/compress/internal/le=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b280\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a
+packagefile math=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b059\_pkg_.a
+packagefile math/bits=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b032\_pkg_.a
+packagefile runtime=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b009\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a

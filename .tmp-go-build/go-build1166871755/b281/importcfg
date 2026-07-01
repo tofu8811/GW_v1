@@ -1,0 +1,10 @@
+# import config
+packagefile bufio=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b190\_pkg_.a
+packagefile compress/gzip=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b238\_pkg_.a
+packagefile encoding/binary=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b166\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile github.com/klauspost/compress/flate=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b279\_pkg_.a
+packagefile hash/crc32=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b239\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a
+packagefile time=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b039\_pkg_.a

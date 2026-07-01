@@ -1,0 +1,4 @@
+# import config
+packagefile crypto/internal/constanttime=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b105\_pkg_.a
+packagefile crypto/internal/fips140/subtle=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b104\_pkg_.a
+packagefile internal/runtime/sys=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b023\_pkg_.a

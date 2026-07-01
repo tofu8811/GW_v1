@@ -1,0 +1,11 @@
+# import config
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile internal/abi=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b005\_pkg_.a
+packagefile internal/bytealg=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b010\_pkg_.a
+packagefile internal/stringslite=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b033\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a
+packagefile iter=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b048\_pkg_.a
+packagefile math/bits=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b032\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a
+packagefile unicode=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b055\_pkg_.a
+packagefile unicode/utf8=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b050\_pkg_.a

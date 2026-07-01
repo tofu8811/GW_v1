@@ -1,0 +1,14 @@
+# import config
+packagefile bytes=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b053\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile internal/byteorder=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b012\_pkg_.a
+packagefile internal/cpu=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b011\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a
+packagefile math=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b059\_pkg_.a
+packagefile math/bits=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b032\_pkg_.a
+packagefile math/rand=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b136\_pkg_.a
+packagefile slices=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b046\_pkg_.a
+packagefile strconv=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b060\_pkg_.a
+packagefile strings=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b072\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a

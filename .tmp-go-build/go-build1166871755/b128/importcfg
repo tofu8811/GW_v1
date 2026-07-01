@@ -1,0 +1,4 @@
+# import config
+packagefile crypto=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b089\_pkg_.a
+packagefile crypto/internal/fips140/sha3=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b103\_pkg_.a
+packagefile hash=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b090\_pkg_.a

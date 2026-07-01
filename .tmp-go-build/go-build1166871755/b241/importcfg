@@ -1,0 +1,11 @@
+# import config
+importmap golang.org/x/text/secure/bidirule=vendor/golang.org/x/text/secure/bidirule
+importmap golang.org/x/text/unicode/bidi=vendor/golang.org/x/text/unicode/bidi
+importmap golang.org/x/text/unicode/norm=vendor/golang.org/x/text/unicode/norm
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile vendor/golang.org/x/text/secure/bidirule=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b242\_pkg_.a
+packagefile vendor/golang.org/x/text/unicode/bidi=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b244\_pkg_.a
+packagefile vendor/golang.org/x/text/unicode/norm=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b245\_pkg_.a
+packagefile math=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b059\_pkg_.a
+packagefile strings=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b072\_pkg_.a
+packagefile unicode/utf8=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b050\_pkg_.a

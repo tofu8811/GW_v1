@@ -1,0 +1,9 @@
+# import config
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a
+packagefile log/internal=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b082\_pkg_.a
+packagefile os=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b061\_pkg_.a
+packagefile runtime=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b009\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a
+packagefile sync/atomic=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b037\_pkg_.a
+packagefile time=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b039\_pkg_.a

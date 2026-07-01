@@ -1,0 +1,8 @@
+# import config
+packagefile slices=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b046\_pkg_.a
+packagefile sort=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b075\_pkg_.a
+packagefile strconv=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b060\_pkg_.a
+packagefile strings=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b072\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a
+packagefile unicode=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b055\_pkg_.a
+packagefile unicode/utf8=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b050\_pkg_.a

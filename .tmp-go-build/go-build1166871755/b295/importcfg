@@ -1,0 +1,6 @@
+# import config
+packagefile context=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b002\_pkg_.a
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile golang.org/x/sys/windows=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b272\_pkg_.a
+packagefile net=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b182\_pkg_.a
+packagefile syscall=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b044\_pkg_.a

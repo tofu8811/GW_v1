@@ -1,0 +1,11 @@
+# import config
+importmap golang.org/x/net/idna=vendor/golang.org/x/net/idna
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile vendor/golang.org/x/net/idna=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b241\_pkg_.a
+packagefile net=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b182\_pkg_.a
+packagefile net/netip=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b186\_pkg_.a
+packagefile net/url=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b188\_pkg_.a
+packagefile os=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b061\_pkg_.a
+packagefile strings=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b072\_pkg_.a
+packagefile unicode/utf8=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b050\_pkg_.a

@@ -1,0 +1,9 @@
+# import config
+packagefile cmp=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b047\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile internal/bytealg=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b010\_pkg_.a
+packagefile internal/byteorder=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b012\_pkg_.a
+packagefile math=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b059\_pkg_.a
+packagefile math/bits=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b032\_pkg_.a
+packagefile strconv=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b060\_pkg_.a
+packagefile unique=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b187\_pkg_.a

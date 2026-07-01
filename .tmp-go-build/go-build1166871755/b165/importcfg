@@ -1,0 +1,13 @@
+# import config
+importmap golang.org/x/crypto/chacha20=vendor/golang.org/x/crypto/chacha20
+importmap golang.org/x/crypto/internal/alias=vendor/golang.org/x/crypto/internal/alias
+importmap golang.org/x/crypto/internal/poly1305=vendor/golang.org/x/crypto/internal/poly1305
+importmap golang.org/x/sys/cpu=vendor/golang.org/x/sys/cpu
+packagefile crypto/cipher=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b092\_pkg_.a
+packagefile crypto/fips140=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b113\_pkg_.a
+packagefile encoding/binary=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b166\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile vendor/golang.org/x/crypto/chacha20=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b167\_pkg_.a
+packagefile vendor/golang.org/x/crypto/internal/alias=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b168\_pkg_.a
+packagefile vendor/golang.org/x/crypto/internal/poly1305=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b169\_pkg_.a
+packagefile vendor/golang.org/x/sys/cpu=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b170\_pkg_.a

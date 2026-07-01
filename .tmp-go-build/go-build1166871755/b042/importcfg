@@ -1,0 +1,6 @@
+# import config
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile internal/syscall/windows/sysdll=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b043\_pkg_.a
+packagefile runtime=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b009\_pkg_.a
+packagefile syscall=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b044\_pkg_.a
+packagefile unicode/utf16=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b049\_pkg_.a

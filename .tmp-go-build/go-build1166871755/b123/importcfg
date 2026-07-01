@@ -1,0 +1,4 @@
+# import config
+packagefile crypto/sha256=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b088\_pkg_.a
+packagefile encoding/hex=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b120\_pkg_.a
+packagefile github.com/jackc/pgx/v5/pgconn=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b124\_pkg_.a

@@ -1,0 +1,12 @@
+# import config
+packagefile bytes=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b053\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile golang.org/x/text/cases=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b199\_pkg_.a
+packagefile golang.org/x/text/language=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b201\_pkg_.a
+packagefile golang.org/x/text/runes=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b207\_pkg_.a
+packagefile golang.org/x/text/secure/bidirule=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b208\_pkg_.a
+packagefile golang.org/x/text/transform=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b205\_pkg_.a
+packagefile golang.org/x/text/unicode/norm=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b206\_pkg_.a
+packagefile golang.org/x/text/width=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b210\_pkg_.a
+packagefile unicode=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b055\_pkg_.a
+packagefile unicode/utf8=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b050\_pkg_.a

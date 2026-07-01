@@ -1,0 +1,22 @@
+# import config
+importmap golang.org/x/crypto/chacha20poly1305=vendor/golang.org/x/crypto/chacha20poly1305
+packagefile bytes=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b053\_pkg_.a
+packagefile crypto=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b089\_pkg_.a
+packagefile crypto/cipher=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b092\_pkg_.a
+packagefile crypto/ecdh=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b141\_pkg_.a
+packagefile crypto/fips140=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b113\_pkg_.a
+packagefile crypto/hkdf=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b160\_pkg_.a
+packagefile crypto/internal/fips140/aes=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b093\_pkg_.a
+packagefile crypto/internal/fips140/aes/gcm=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b107\_pkg_.a
+packagefile crypto/internal/fips140/drbg=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b108\_pkg_.a
+packagefile crypto/internal/rand=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b133\_pkg_.a
+packagefile crypto/mlkem=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b163\_pkg_.a
+packagefile crypto/sha256=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b088\_pkg_.a
+packagefile crypto/sha3=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b128\_pkg_.a
+packagefile crypto/sha512=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b137\_pkg_.a
+packagefile errors=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b003\_pkg_.a
+packagefile fmt=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b056\_pkg_.a
+packagefile vendor/golang.org/x/crypto/chacha20poly1305=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b165\_pkg_.a
+packagefile hash=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b090\_pkg_.a
+packagefile internal/byteorder=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b012\_pkg_.a
+packagefile slices=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b046\_pkg_.a

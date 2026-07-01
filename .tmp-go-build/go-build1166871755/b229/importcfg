@@ -1,0 +1,7 @@
+# import config
+packagefile context=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b002\_pkg_.a
+packagefile crypto/rand=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b132\_pkg_.a
+packagefile encoding/hex=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b120\_pkg_.a
+packagefile github.com/redis/go-redis/v9/internal/pool=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b222\_pkg_.a
+packagefile sync=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b035\_pkg_.a
+packagefile time=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b039\_pkg_.a

@@ -1,0 +1,7 @@
+# import config
+packagefile crypto/internal/fips140=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b094\_pkg_.a
+packagefile crypto/internal/fips140/hmac=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b098\_pkg_.a
+packagefile crypto/internal/fips140/sha256=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b099\_pkg_.a
+packagefile crypto/internal/fips140deps/byteorder=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b100\_pkg_.a
+packagefile crypto/internal/fips140deps/godebug=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b095\_pkg_.a
+packagefile io=D:\PROJECT (GRADUATION)\gateway-api\.tmp-go-build\go-build1166871755\b054\_pkg_.a
