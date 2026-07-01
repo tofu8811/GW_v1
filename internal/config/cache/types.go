@@ -32,17 +32,26 @@ func DefaultConfig() Config {
 }
 
 type RouteValue struct {
-	SchemaVersion int             `json:"schema_version"`
-	RouteID       string          `json:"route_id"`
-	Path          string          `json:"path"`
-	Method        string          `json:"method"`
-	StripPrefix   bool            `json:"strip_prefix"`
-	RewriteTarget *string         `json:"rewrite_target"`
-	AuthRequired  bool            `json:"auth_required"`
-	RateLimitID   *string         `json:"rate_limit_id"`
-	Priority      int             `json:"priority"`
-	Service       ServiceValue    `json:"service"`
-	Instances     []InstanceValue `json:"instances"`
+	SchemaVersion int                   `json:"schema_version"`
+	RouteID       string                `json:"route_id"`
+	Path          string                `json:"path"`
+	Method        string                `json:"method"`
+	StripPrefix   bool                  `json:"strip_prefix"`
+	RewriteTarget *string               `json:"rewrite_target"`
+	AuthRequired  bool                  `json:"auth_required"`
+	RateLimitID   *string               `json:"rate_limit_id"`
+	RateLimit     *RateLimitPolicyValue `json:"rate_limit,omitempty"`
+	Priority      int                   `json:"priority"`
+	Service       ServiceValue          `json:"service"`
+	Instances     []InstanceValue       `json:"instances"`
+}
+
+type RateLimitPolicyValue struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	LimitType     string `json:"limit_type"`
+	MaxRequests   int    `json:"max_requests"`
+	WindowSeconds int    `json:"window_seconds"`
 }
 
 type ServiceValue struct {

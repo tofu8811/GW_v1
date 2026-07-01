@@ -1,6 +1,9 @@
 package proxy
 
-import "gateway-api/internal/proxy/loadbalancer"
+import (
+	configcache "gateway-api/internal/config/cache"
+	"gateway-api/internal/proxy/loadbalancer"
+)
 
 type UpstreamRoute struct {
 	RouteID       string
@@ -8,6 +11,7 @@ type UpstreamRoute struct {
 	RouteMethod   string
 	StripPrefix   bool
 	RewriteTarget *string
+	RateLimit     *configcache.RateLimitPolicyValue
 
 	ServiceID   string
 	ServiceName string

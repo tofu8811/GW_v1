@@ -5,6 +5,7 @@ import (
 
 	adminCache "gateway-api/internal/admin/cache"
 	adminInstances "gateway-api/internal/admin/instances"
+	adminRateLimits "gateway-api/internal/admin/ratelimits"
 	adminRoutes "gateway-api/internal/admin/routes"
 	adminServices "gateway-api/internal/admin/services"
 	configcache "gateway-api/internal/config/cache"
@@ -35,4 +36,5 @@ func RegisterAdminRoutes(app *fiber.App, db *pgxpool.Pool, redisClient *redis.Cl
 	adminInstances.RegisterServiceInstanceRoutes(admin.Group("/services"), db, notifier)
 	adminInstances.RegisterInstanceRoutes(admin.Group("/instances"), db, notifier, healthStore, healthChecker)
 	adminRoutes.RegisterRouteRoutes(admin.Group("/routes"), db, notifier)
+	adminRateLimits.RegisterRateLimitPolicyRoutes(admin.Group("/rate-limit-policies"), db, notifier)
 }

@@ -26,9 +26,10 @@ type Handler struct {
 	weighted     *loadbalancer.WeightedRoundRobin
 	healthFilter *upstreamhealth.HealthFilter
 	breakers     *breaker.Registry
+	rateLimiter  *RateLimiter
 }
 
-func NewHandler(configCache *configcache.Store, logger *slog.Logger, healthFilter *upstreamhealth.HealthFilter, breakers *breaker.Registry) *Handler {
+func NewHandler(configCache *configcache.Store, logger *slog.Logger, healthFilter *upstreamhealth.HealthFilter, breakers *breaker.Registry, rateLimiter *RateLimiter) *Handler {
 	return &Handler{
 		configCache:  configCache,
 		logger:       logger,
@@ -36,6 +37,7 @@ func NewHandler(configCache *configcache.Store, logger *slog.Logger, healthFilte
 		weighted:     loadbalancer.NewWeightedRoundRobin(),
 		healthFilter: healthFilter,
 		breakers:     breakers,
+		rateLimiter:  rateLimiter,
 	}
 }
 
@@ -63,6 +65,16 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 			"client_ip", c.IP(),
 		)
 		return response.InternalServerError(c)
+	}
+
+	if h.rateLimiter != nil {
+		allowed, err := h.rateLimiter.Allow(c, route)
+		if err != nil {
+			return err
+		}
+		if !allowed {
+			return nil
+		}
 	}
 
 	prepareForwardedRequest(c)
@@ -116,6 +128,7 @@ func upstreamRoutesFromCache(route configcache.RouteValue) []UpstreamRoute {
 			RouteMethod:           route.Method,
 			StripPrefix:           route.StripPrefix,
 			RewriteTarget:         route.RewriteTarget,
+			RateLimit:             route.RateLimit,
 			ServiceID:             route.Service.ID,
 			ServiceName:           route.Service.Name,
 			Protocol:              route.Service.Protocol,
