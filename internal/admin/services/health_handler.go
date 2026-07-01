@@ -45,6 +45,7 @@ func (h *Handler) GetHealth(c *fiber.Ctx) error {
 		}
 		items = append(items, fiber.Map{
 			"instance_id": instance.InstanceID,
+			"health_path": instance.HealthPath,
 			"status":      ih.Status,
 			"latency_ms":  ih.LatencyMS,
 			"last_check":  ih.LastCheck,

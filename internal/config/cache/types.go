@@ -50,6 +50,7 @@ type ServiceValue struct {
 	Name                  string `json:"name"`
 	Protocol              string `json:"protocol"`
 	LBStrategy            string `json:"lb_strategy"`
+	HealthPath            string `json:"health_path"`
 	TimeoutMS             int    `json:"timeout_ms"`
 	RetryCount            int    `json:"retry_count"`
 	CircuitBreakerEnabled bool   `json:"circuit_breaker_enabled"`
@@ -67,6 +68,7 @@ type ActiveInstanceValue struct {
 	InstanceID string
 	Host       string
 	Port       int
+	HealthPath string
 }
 
 type PluginMetaValue struct {

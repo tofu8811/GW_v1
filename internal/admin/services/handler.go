@@ -63,6 +63,8 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		return response.BadRequest(c, err.Error())
 	}
 
+	healthPath := normalizeHealthPath(req.HealthPath)
+
 	timeoutMS := intValue(req.TimeoutMS, defaultTimeoutMS)
 	if err := validation.ValidateIntGreaterThan("timeout_ms", timeoutMS, 0); err != nil {
 		return response.BadRequest(c, err.Error())
@@ -84,6 +86,7 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		Description:           stringPtr(req.Description),
 		Protocol:              protocol,
 		LBStrategy:            lbStrategy,
+		HealthPath:            healthPath,
 		TimeoutMS:             timeoutMS,
 		RetryCount:            retryCount,
 		CircuitBreakerEnabled: boolValue(req.CircuitBreakerEnabled, false),
@@ -185,6 +188,10 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 			return response.BadRequest(c, err.Error())
 		}
 		service.LBStrategy = lbStrategy
+	}
+
+	if req.HealthPath != nil {
+		service.HealthPath = normalizeHealthPath(*req.HealthPath)
 	}
 
 	if req.TimeoutMS != nil {
@@ -293,6 +300,18 @@ func normalizeLBStrategy(strategy string) (string, error) {
 	return normalized, nil
 }
 
+func normalizeHealthPath(path string) string {
+	normalized := strings.TrimSpace(path)
+	if normalized == "" {
+		return ""
+	}
+	if strings.HasPrefix(normalized, "/") {
+		return normalized
+	}
+
+	return "/" + normalized
+}
+
 func boolValue(value *bool, defaultValue bool) bool {
 	if value == nil {
 		return defaultValue
@@ -330,6 +349,7 @@ func toResponse(service Service) ServiceResponse {
 		Description:           service.Description,
 		Protocol:              service.Protocol,
 		LBStrategy:            service.LBStrategy,
+		HealthPath:            service.HealthPath,
 		TimeoutMS:             service.TimeoutMS,
 		RetryCount:            service.RetryCount,
 		CircuitBreakerEnabled: service.CircuitBreakerEnabled,

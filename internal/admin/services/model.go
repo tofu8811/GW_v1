@@ -12,6 +12,7 @@ type Service struct {
 	Description           *string
 	Protocol              string
 	LBStrategy            string
+	HealthPath            string
 	TimeoutMS             int
 	RetryCount            int16
 	CircuitBreakerEnabled bool

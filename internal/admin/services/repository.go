@@ -24,10 +24,10 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 func (r *Repository) Create(ctx context.Context, service *Service) error {
 	query := `
 		INSERT INTO services (
-			id, name, description, protocol, lb_strategy, timeout_ms,
-			retry_count, circuit_breaker_enabled, is_active
+			id, name, description, protocol, lb_strategy, health_path,
+			timeout_ms, retry_count, circuit_breaker_enabled, is_active
 		)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+		VALUES ($1,$2,$3,$4,$5,NULLIF($6, ''),$7,$8,$9,$10)
 		RETURNING created_at, updated_at
 	`
 
@@ -39,6 +39,7 @@ func (r *Repository) Create(ctx context.Context, service *Service) error {
 		service.Description,
 		service.Protocol,
 		service.LBStrategy,
+		service.HealthPath,
 		service.TimeoutMS,
 		service.RetryCount,
 		service.CircuitBreakerEnabled,
@@ -48,7 +49,7 @@ func (r *Repository) Create(ctx context.Context, service *Service) error {
 
 func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Service, error) {
 	query := `
-		SELECT id, name, description, protocol, lb_strategy, timeout_ms,
+		SELECT id, name, description, protocol, lb_strategy, COALESCE(health_path, ''), timeout_ms,
 		       retry_count, circuit_breaker_enabled, is_active, created_at, updated_at
 		FROM services
 		ORDER BY created_at DESC
@@ -72,6 +73,7 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Se
 			&service.Description,
 			&service.Protocol,
 			&service.LBStrategy,
+			&service.HealthPath,
 			&service.TimeoutMS,
 			&service.RetryCount,
 			&service.CircuitBreakerEnabled,
@@ -97,7 +99,7 @@ func (r *Repository) Count(ctx context.Context) (int64, error) {
 
 func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*Service, error) {
 	query := `
-		SELECT id, name, description, protocol, lb_strategy, timeout_ms,
+		SELECT id, name, description, protocol, lb_strategy, COALESCE(health_path, ''), timeout_ms,
 		       retry_count, circuit_breaker_enabled, is_active, created_at, updated_at
 		FROM services
 		WHERE id = $1
@@ -111,6 +113,7 @@ func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*Service, erro
 		&service.Description,
 		&service.Protocol,
 		&service.LBStrategy,
+		&service.HealthPath,
 		&service.TimeoutMS,
 		&service.RetryCount,
 		&service.CircuitBreakerEnabled,
@@ -137,10 +140,11 @@ func (r *Repository) Update(ctx context.Context, service *Service) error {
 		    description = $3,
 		    protocol = $4,
 		    lb_strategy = $5,
-		    timeout_ms = $6,
-		    retry_count = $7,
-		    circuit_breaker_enabled = $8,
-		    is_active = $9
+		    health_path = NULLIF($6, ''),
+		    timeout_ms = $7,
+		    retry_count = $8,
+		    circuit_breaker_enabled = $9,
+		    is_active = $10
 		WHERE id = $1
 		RETURNING updated_at
 	`
@@ -153,6 +157,7 @@ func (r *Repository) Update(ctx context.Context, service *Service) error {
 		service.Description,
 		service.Protocol,
 		service.LBStrategy,
+		service.HealthPath,
 		service.TimeoutMS,
 		service.RetryCount,
 		service.CircuitBreakerEnabled,

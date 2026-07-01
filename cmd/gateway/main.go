@@ -78,7 +78,7 @@ func main() {
 	srv := server.New(logg, healthHandler)
 
 	auth.RegisterAuthRoutes(srv.App, db, rdb, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL, cfg.AppEnv)
-	admin.RegisterAdminRoutes(srv.App, db, cacheStore, upstreamHealthStore, upstreamChecker)
+	admin.RegisterAdminRoutes(srv.App, db, rdb, cacheStore, configNotifier, upstreamHealthStore, upstreamChecker)
 
 	proxy.RegisterGatewayRoutes(srv.App, cacheStore, logg, upstreamHealthFilter, breakers)
 

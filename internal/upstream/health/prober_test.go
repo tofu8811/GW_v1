@@ -60,6 +60,21 @@ func TestProbeHTTPTimeout(t *testing.T) {
 	}
 }
 
+func TestProbeHTTPAddsMissingLeadingSlash(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/products" {
+			t.Fatalf("expected /api/products, got %s", r.URL.Path)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	target := targetFromHTTPServer(t, server, "api/products")
+	if _, err := Probe(context.Background(), target, time.Second); err != nil {
+		t.Fatalf("expected healthy probe, got %v", err)
+	}
+}
+
 func targetFromHTTPServer(t *testing.T, server *httptest.Server, path string) Target {
 	t.Helper()
 	host, portRaw, err := net.SplitHostPort(server.Listener.Addr().String())

@@ -12,7 +12,8 @@ CREATE TABLE services (
     circuit_breaker_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     is_active               BOOLEAN NOT NULL DEFAULT TRUE,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+    health_path             VARCHAR(255)
 );
 
 CREATE TRIGGER trg_services_updated

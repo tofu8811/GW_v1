@@ -20,8 +20,9 @@ func Probe(ctx context.Context, target Target, timeout time.Duration) (float64, 
 		timeout = 2 * time.Second
 	}
 
+	target.HealthPath = strings.TrimSpace(target.HealthPath)
 	startedAt := time.Now()
-	if strings.TrimSpace(target.HealthPath) == "" {
+	if target.HealthPath == "" {
 		err := probeTCP(ctx, target, timeout)
 		return float64(time.Since(startedAt).Microseconds()) / 1000, err
 	}
@@ -59,7 +60,7 @@ func probeHTTP(ctx context.Context, target Target, timeout time.Duration) error 
 }
 
 func healthURL(target Target) string {
-	path := target.HealthPath
+	path := strings.TrimSpace(target.HealthPath)
 	if !strings.HasPrefix(path, "/") {
 		path = "/" + path
 	}

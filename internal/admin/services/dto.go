@@ -7,6 +7,7 @@ type CreateServiceRequest struct {
 	Description           *string `json:"description"`
 	Protocol              string  `json:"protocol"`
 	LBStrategy            string  `json:"lb_strategy"`
+	HealthPath            string  `json:"health_path"`
 	TimeoutMS             *int    `json:"timeout_ms"`
 	RetryCount            *int16  `json:"retry_count"`
 	CircuitBreakerEnabled *bool   `json:"circuit_breaker_enabled"`
@@ -18,6 +19,7 @@ type UpdateServiceRequest struct {
 	Description           *string `json:"description"`
 	Protocol              *string `json:"protocol"`
 	LBStrategy            *string `json:"lb_strategy"`
+	HealthPath            *string `json:"health_path"`
 	TimeoutMS             *int    `json:"timeout_ms"`
 	RetryCount            *int16  `json:"retry_count"`
 	CircuitBreakerEnabled *bool   `json:"circuit_breaker_enabled"`
@@ -30,6 +32,7 @@ type ServiceResponse struct {
 	Description           *string   `json:"description"`
 	Protocol              string    `json:"protocol"`
 	LBStrategy            string    `json:"lb_strategy"`
+	HealthPath            string    `json:"health_path"`
 	TimeoutMS             int       `json:"timeout_ms"`
 	RetryCount            int16     `json:"retry_count"`
 	CircuitBreakerEnabled bool      `json:"circuit_breaker_enabled"`

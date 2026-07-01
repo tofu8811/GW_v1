@@ -149,6 +149,7 @@ func (s *Store) ActiveInstances() []ActiveInstanceValue {
 				InstanceID: instance.ID,
 				Host:       instance.Host,
 				Port:       instance.Port,
+				HealthPath: route.Service.HealthPath,
 			})
 		}
 	}
@@ -168,6 +169,7 @@ func (s *Store) FindActiveInstance(instanceID string) (ActiveInstanceValue, bool
 					InstanceID: instance.ID,
 					Host:       instance.Host,
 					Port:       instance.Port,
+					HealthPath: route.Service.HealthPath,
 				}, true
 			}
 		}
@@ -196,6 +198,7 @@ func (s *Store) ActiveInstancesByService(serviceID string) []ActiveInstanceValue
 				InstanceID: instance.ID,
 				Host:       instance.Host,
 				Port:       instance.Port,
+				HealthPath: route.Service.HealthPath,
 			})
 		}
 	}
@@ -310,6 +313,7 @@ func readRoutes(ctx context.Context, tx pgx.Tx, schemaVersion int) ([]RouteValue
 			s.name,
 			s.protocol,
 			s.lb_strategy,
+			COALESCE(s.health_path, ''),
 			s.timeout_ms,
 			s.retry_count,
 			s.circuit_breaker_enabled,
@@ -358,6 +362,7 @@ func readRoutes(ctx context.Context, tx pgx.Tx, schemaVersion int) ([]RouteValue
 			&route.Service.Name,
 			&route.Service.Protocol,
 			&route.Service.LBStrategy,
+			&route.Service.HealthPath,
 			&route.Service.TimeoutMS,
 			&route.Service.RetryCount,
 			&route.Service.CircuitBreakerEnabled,

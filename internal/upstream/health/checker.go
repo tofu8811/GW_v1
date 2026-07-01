@@ -116,7 +116,11 @@ func (c *Checker) runOnce(ctx context.Context) {
 }
 
 func (c *Checker) check(ctx context.Context, instance configcache.ActiveInstanceValue) (InstanceHealth, error) {
-	latencyMS, err := Probe(ctx, Target{Host: instance.Host, Port: instance.Port}, c.cfg.ProbeTimeout)
+	latencyMS, err := Probe(ctx, Target{
+		Host:       instance.Host,
+		Port:       instance.Port,
+		HealthPath: instance.HealthPath,
+	}, c.cfg.ProbeTimeout)
 	status, failCount := c.recordResult(instance.InstanceID, err == nil)
 	ih := InstanceHealth{
 		InstanceID: instance.InstanceID,
