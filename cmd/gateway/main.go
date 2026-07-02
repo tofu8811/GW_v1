@@ -15,6 +15,7 @@ import (
 	configcache "gateway-api/internal/config/cache"
 	"gateway-api/internal/health"
 	"gateway-api/internal/proxy"
+	"gateway-api/internal/security/ipblacklist"
 	"gateway-api/internal/server"
 	"gateway-api/internal/upstream/breaker"
 	upstreamhealth "gateway-api/internal/upstream/health"
@@ -76,11 +77,16 @@ func main() {
 
 	healthHandler := health.NewHandler(db, rdb, cacheStore.Ready)
 	srv := server.New(logg, healthHandler)
+	ipBlacklistChecker := ipblacklist.NewChecker(db, rdb, logg)
+	if err := ipBlacklistChecker.Reload(ctx); err != nil {
+		logg.Error("failed to warm ip blacklist cache", "error", err)
+		log.Fatal(err)
+	}
 
 	auth.RegisterAuthRoutes(srv.App, db, rdb, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL, cfg.AppEnv)
-	admin.RegisterAdminRoutes(srv.App, db, rdb, cacheStore, configNotifier, upstreamHealthStore, upstreamChecker)
+	admin.RegisterAdminRoutes(srv.App, db, rdb, cacheStore, configNotifier, upstreamHealthStore, upstreamChecker, ipBlacklistChecker)
 
-	proxy.RegisterGatewayRoutes(srv.App, cacheStore, rdb, logg, upstreamHealthFilter, breakers)
+	proxy.RegisterGatewayRoutes(srv.App, cacheStore, rdb, logg, upstreamHealthFilter, breakers, ipBlacklistChecker)
 
 	if err := srv.Run(cfg.AppPort); err != nil {
 		logg.Error("server stopped", "error", err)

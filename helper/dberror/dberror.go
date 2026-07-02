@@ -36,8 +36,8 @@ var constraintErrors = map[string]APIError{
 	// service_instances
 	"service_instances_service_id_fkey":          {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "service_id does not exist"},
 	"service_instances_service_host_port_unique": {Status: http.StatusConflict, Code: "conflict", Message: "service instance already exists"},
-	"service_instances_weight_check": {Status: http.StatusBadRequest, Code: "bad_request", Message: "weight must be greater than or equal to 1"},
-	
+	"service_instances_weight_check":             {Status: http.StatusBadRequest, Code: "bad_request", Message: "weight must be greater than or equal to 1"},
+
 	// rate_limit_policies
 	"rate_limit_policies_name_unique": {Status: http.StatusConflict, Code: "conflict", Message: "rate limit policy name already exists"},
 
@@ -67,8 +67,9 @@ var constraintErrors = map[string]APIError{
 	"api_keys_rate_limit_id_fkey": {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "rate_limit_id does not exist"},
 
 	// ip_blacklist
-	"ip_blacklist_ip_or_cidr_unique": {Status: http.StatusConflict, Code: "conflict", Message: "IP or CIDR already exists in blacklist"},
-	"ip_blacklist_created_by_fkey":   {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "created_by user does not exist"},
+	"ip_blacklist_ip_or_cidr_unique":        {Status: http.StatusConflict, Code: "conflict", Message: "IP or CIDR already exists in blacklist"},
+	"ip_blacklist_ip_or_cidr_active_unique": {Status: http.StatusConflict, Code: "conflict", Message: "IP or CIDR already exists in blacklist"},
+	"ip_blacklist_created_by_fkey":          {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "created_by user does not exist"},
 
 	// aggregation
 	"aggregation_configs_name_unique":               {Status: http.StatusConflict, Code: "conflict", Message: "aggregation config name already exists"},

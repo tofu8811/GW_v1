@@ -5,10 +5,12 @@ import (
 
 	adminCache "gateway-api/internal/admin/cache"
 	adminInstances "gateway-api/internal/admin/instances"
+	adminIPBlacklist "gateway-api/internal/admin/ipblacklist"
 	adminRateLimits "gateway-api/internal/admin/ratelimits"
 	adminRoutes "gateway-api/internal/admin/routes"
 	adminServices "gateway-api/internal/admin/services"
 	configcache "gateway-api/internal/config/cache"
+	runtimeipblacklist "gateway-api/internal/security/ipblacklist"
 	upstreamhealth "gateway-api/internal/upstream/health"
 
 	"github.com/gofiber/fiber/v2"
@@ -22,7 +24,7 @@ type ConfigNotifier interface {
 	NotifyChange(ctx context.Context, group string) error
 }
 
-func RegisterAdminRoutes(app *fiber.App, db *pgxpool.Pool, redisClient *redis.Client, cacheStore *configcache.Store, notifier ConfigNotifier, healthStore *upstreamhealth.Store, healthChecker adminInstances.HealthChecker, middlewares ...fiber.Handler) {
+func RegisterAdminRoutes(app *fiber.App, db *pgxpool.Pool, redisClient *redis.Client, cacheStore *configcache.Store, notifier ConfigNotifier, healthStore *upstreamhealth.Store, healthChecker adminInstances.HealthChecker, ipBlacklistChecker *runtimeipblacklist.Checker, middlewares ...fiber.Handler) {
 	admin := app.Group("/admin")
 
 	for _, middleware := range middlewares {
@@ -37,4 +39,5 @@ func RegisterAdminRoutes(app *fiber.App, db *pgxpool.Pool, redisClient *redis.Cl
 	adminInstances.RegisterInstanceRoutes(admin.Group("/instances"), db, notifier, healthStore, healthChecker)
 	adminRoutes.RegisterRouteRoutes(admin.Group("/routes"), db, notifier)
 	adminRateLimits.RegisterRateLimitPolicyRoutes(admin.Group("/rate-limit-policies"), db, notifier)
+	adminIPBlacklist.RegisterIPBlacklistRoutes(admin.Group("/ip-blacklist"), db, ipBlacklistChecker)
 }
