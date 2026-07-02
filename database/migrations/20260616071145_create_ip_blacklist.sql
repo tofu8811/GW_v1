@@ -5,7 +5,10 @@ CREATE TABLE ip_blacklist (
     reason      TEXT,
     created_by  UUID CONSTRAINT ip_blacklist_created_by_fkey REFERENCES users(id) ON DELETE SET NULL,
     expires_at  TIMESTAMPTZ,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at  TIMESTAMPTZ
 );
 
 CREATE INDEX idx_blacklist_cidr

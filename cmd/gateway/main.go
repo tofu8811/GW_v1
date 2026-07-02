@@ -16,6 +16,7 @@ import (
 	"gateway-api/internal/health"
 	"gateway-api/internal/middleware"
 	"gateway-api/internal/proxy"
+	"gateway-api/internal/security/ipblacklist"
 	"gateway-api/internal/server"
 	"gateway-api/internal/upstream/breaker"
 	upstreamhealth "gateway-api/internal/upstream/health"
@@ -87,13 +88,18 @@ func main() {
 
 	healthHandler := health.NewHandler(db, rdb, cacheStore.Ready)
 	srv := server.New(logg, healthHandler, requestLogFile)
+	ipBlacklistChecker := ipblacklist.NewChecker(db, rdb, logg)
+	if err := ipBlacklistChecker.Reload(ctx); err != nil {
+		logg.Error("failed to warm ip blacklist cache", "error", err)
+		log.Fatal(err)
+	}
 
 	auth.RegisterAuthRoutes(srv.App, db, rdb, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL, cfg.AppEnv)
 	jwtAuth := middleware.JWTAuth(cfg.JWTSecret, rdb, db)
-	admin.RegisterAdminRoutes(srv.App, db, rdb, cacheStore, configNotifier, upstreamHealthStore, upstreamChecker, jwtAuth)
+	admin.RegisterAdminRoutes(srv.App, db, rdb, cacheStore, configNotifier, upstreamHealthStore, upstreamChecker, ipBlacklistChecker, jwtAuth)
 
-	apiKeyAuth := middleware.NewAPIKeyAuth(db, rdb, cfg.JWTSecret)
-	proxy.RegisterGatewayRoutes(srv.App, cacheStore, rdb, logg, upstreamHealthFilter, breakers, apiKeyAuth)
+	apiKeyAuth := middleware.NewGatewayAuth(db, rdb, cfg.JWTSecret)
+	proxy.RegisterGatewayRoutes(srv.App, cacheStore, rdb, logg, upstreamHealthFilter, breakers, apiKeyAuth, ipBlacklistChecker)
 
 	if err := srv.Run(cfg.AppPort); err != nil {
 		logg.Error("server stopped", "error", err)
