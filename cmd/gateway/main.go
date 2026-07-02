@@ -92,8 +92,8 @@ func main() {
 	jwtAuth := middleware.JWTAuth(cfg.JWTSecret, rdb, db)
 	admin.RegisterAdminRoutes(srv.App, db, rdb, cacheStore, configNotifier, upstreamHealthStore, upstreamChecker, jwtAuth)
 
-	gatewayAuth := middleware.NewGatewayAuth(db, rdb, cfg.JWTSecret)
-	proxy.RegisterGatewayRoutes(srv.App, cacheStore, rdb, logg, upstreamHealthFilter, breakers, gatewayAuth)
+	apiKeyAuth := middleware.NewAPIKeyAuth(db, rdb, cfg.JWTSecret)
+	proxy.RegisterGatewayRoutes(srv.App, cacheStore, rdb, logg, upstreamHealthFilter, breakers, apiKeyAuth)
 
 	if err := srv.Run(cfg.AppPort); err != nil {
 		logg.Error("server stopped", "error", err)
