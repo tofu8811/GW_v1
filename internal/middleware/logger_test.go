@@ -11,11 +11,11 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/requestid"
 )
 
-func TestRequestLoggerWritesElasticCompatibleJSON(t *testing.T) {
+func TestLoggerWritesElasticCompatibleJSON(t *testing.T) {
 	var output bytes.Buffer
 	app := fiber.New()
 	app.Use(requestid.New())
-	app.Use(RequestLogger(&output, nil))
+	app.Use(Logger(&output, nil))
 	app.Get("/api/test", func(c *fiber.Ctx) error {
 		SetRouteLogContext(c, "route-1", "test-service")
 		SetAPIKeyLogContext(c, "key-1")

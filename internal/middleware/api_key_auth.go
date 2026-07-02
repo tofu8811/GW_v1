@@ -20,17 +20,17 @@ const (
 	LocalsAPIKeyScopes = "api_key_scopes"
 )
 
-type GatewayAuth struct {
+type APIKeyAuth struct {
 	db        *pgxpool.Pool
 	rdb       *redis.Client
 	jwtSecret string
 }
 
-func NewGatewayAuth(db *pgxpool.Pool, rdb *redis.Client, jwtSecret string) *GatewayAuth {
-	return &GatewayAuth{db: db, rdb: rdb, jwtSecret: jwtSecret}
+func NewAPIKeyAuth(db *pgxpool.Pool, rdb *redis.Client, jwtSecret string) *APIKeyAuth {
+	return &APIKeyAuth{db: db, rdb: rdb, jwtSecret: jwtSecret}
 }
 
-func (a *GatewayAuth) Authenticate(c *fiber.Ctx, routeID string, method string, routePath string) error {
+func (a *APIKeyAuth) Authenticate(c *fiber.Ctx, routeID string, method string, routePath string) error {
 	if strings.TrimSpace(c.Get(authorizationHeader)) != "" {
 		return authenticateJWT(c, a.jwtSecret, a.rdb, a.db)
 	}

@@ -24,7 +24,7 @@ func New(logger *slog.Logger, healthHandler *health.Handler, requestLogWriter io
 	})
 
 	app.Use(requestid.New())
-	app.Use(appmiddleware.RequestLogger(requestLogWriter, logger))
+	app.Use(appmiddleware.Logger(requestLogWriter, logger))
 	app.Use(recover.New())
 	app.Use(cors.New())
 

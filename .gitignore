@@ -2,7 +2,11 @@
 .gocache/
 tmp/
 bin/
+build/
+dist/
 .tmp-go-build
+*.exe
+*.exe~
 *.test
 *.out
 coverage.out

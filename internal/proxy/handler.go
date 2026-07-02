@@ -83,6 +83,9 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 		if err := h.authenticator.Authenticate(c, route.RouteID, route.RouteMethod, route.RoutePath); err != nil {
 			return err
 		}
+		if c.Response().StatusCode() >= fiber.StatusBadRequest {
+			return nil
+		}
 	}
 
 	if h.rateLimiter != nil {
