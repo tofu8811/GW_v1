@@ -312,8 +312,14 @@ func readRoutes(ctx context.Context, tx pgx.Tx, schemaVersion int) ([]RouteValue
 			rlp.id::text,
 COALESCE(rlp.name, ''),
 COALESCE(rlp.limit_type, ''),
-COALESCE(rlp.max_requests, 0),
-COALESCE(rlp.window_seconds, 0),
+			COALESCE(rlp.max_requests, 0),
+			COALESCE(rlp.window_seconds, 0),
+			cc.id::text,
+			COALESCE(cc.allowed_origins, '{}'::text[]),
+			COALESCE(cc.allowed_methods, '{}'::text[]),
+			COALESCE(cc.allowed_headers, '{}'::text[]),
+			COALESCE(cc.allow_credentials, FALSE),
+			COALESCE(cc.max_age, 0),
 			r.priority,
 			s.id::text,
 			s.name,
@@ -338,11 +344,12 @@ COALESCE(rlp.window_seconds, 0),
 		FROM routes r
 		JOIN services s ON s.id = r.service_id
 		LEFT JOIN rate_limit_policies rlp ON rlp.id = r.rate_limit_id AND rlp.is_active = TRUE
+		LEFT JOIN cors_configs cc ON cc.route_id = r.id
 		LEFT JOIN service_instances si ON si.service_id = s.id AND si.is_active = TRUE
 		WHERE r.is_active = TRUE
 		  AND s.is_active = TRUE
 		  AND s.protocol = 'http'
-		GROUP BY r.id, s.id, rlp.id
+		GROUP BY r.id, s.id, rlp.id, cc.id
 		ORDER BY r.priority DESC, length(r.path) DESC, r.created_at DESC
 	`)
 	if err != nil {
@@ -356,6 +363,8 @@ COALESCE(rlp.window_seconds, 0),
 		var rateLimitID *string
 		var rateLimitPolicyID sql.NullString
 		var rateLimitPolicy RateLimitPolicyValue
+		var corsID sql.NullString
+		var corsValue CORSValue
 		var instances []byte
 
 		err := rows.Scan(
@@ -371,6 +380,12 @@ COALESCE(rlp.window_seconds, 0),
 			&rateLimitPolicy.LimitType,
 			&rateLimitPolicy.MaxRequests,
 			&rateLimitPolicy.WindowSeconds,
+			&corsID,
+			&corsValue.AllowedOrigins,
+			&corsValue.AllowedMethods,
+			&corsValue.AllowedHeaders,
+			&corsValue.AllowCredentials,
+			&corsValue.MaxAge,
 			&route.Priority,
 			&route.Service.ID,
 			&route.Service.Name,
@@ -391,6 +406,9 @@ COALESCE(rlp.window_seconds, 0),
 		if rateLimitPolicyID.Valid {
 			rateLimitPolicy.ID = rateLimitPolicyID.String
 			route.RateLimit = &rateLimitPolicy
+		}
+		if corsID.Valid {
+			route.CORS = &corsValue
 		}
 		if err := json.Unmarshal(instances, &route.Instances); err != nil {
 			return nil, err
@@ -684,6 +702,13 @@ func cloneRoute(route RouteValue) *RouteValue {
 	if route.RateLimit != nil {
 		rateLimit := *route.RateLimit
 		cloned.RateLimit = &rateLimit
+	}
+	if route.CORS != nil {
+		corsValue := *route.CORS
+		corsValue.AllowedOrigins = append([]string(nil), route.CORS.AllowedOrigins...)
+		corsValue.AllowedMethods = append([]string(nil), route.CORS.AllowedMethods...)
+		corsValue.AllowedHeaders = append([]string(nil), route.CORS.AllowedHeaders...)
+		cloned.CORS = &corsValue
 	}
 	return &cloned
 }

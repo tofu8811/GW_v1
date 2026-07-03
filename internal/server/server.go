@@ -3,6 +3,7 @@ package server
 import (
 	"io"
 	"log/slog"
+	"strings"
 
 	"gateway-api/internal/health"
 	appmiddleware "gateway-api/internal/middleware"
@@ -26,7 +27,14 @@ func New(logger *slog.Logger, healthHandler *health.Handler, requestLogWriter io
 	app.Use(requestid.New())
 	app.Use(appmiddleware.Logger(requestLogWriter, logger))
 	app.Use(recover.New())
-	app.Use(cors.New())
+	controlPlaneCORS := cors.New()
+	app.Use(func(c *fiber.Ctx) error {
+		path := c.Path()
+		if path == "/health" || path == "/ready" || strings.HasPrefix(path, "/auth/") || strings.HasPrefix(path, "/admin/") {
+			return controlPlaneCORS(c)
+		}
+		return c.Next()
+	})
 
 	app.Get("/health", healthHandler.Health)
 	app.Get("/ready", healthHandler.Ready)

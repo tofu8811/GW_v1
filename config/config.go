@@ -49,7 +49,7 @@ func Load() Config {
 	redisDB, _ := strconv.Atoi(getEnv("REDIS_DB", "0"))
 	jwtAccessTTL := getDurationEnv("JWT_ACCESS_TOKEN_TTL", 15*time.Minute)
 	jwtRefreshTTL := getDurationEnv("JWT_REFRESH_TOKEN_TTL", 7*24*time.Hour)
-	schemaVersion, _ := strconv.Atoi(getEnv("CONFIG_SCHEMA_VERSION", "1"))
+	schemaVersion, _ := strconv.Atoi(getEnv("CONFIG_SCHEMA_VERSION", "2"))
 	databaseURL := getEnv("DATABASE_URL", "")
 	if databaseURL == "" {
 		databaseURL = buildDatabaseURL()

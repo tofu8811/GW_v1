@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	CurrentSchemaVersion = 1
+	CurrentSchemaVersion = 2
 
 	KeyVersion     = "cfg:version"
 	KeyReload      = "cfg:reload"
@@ -41,9 +41,18 @@ type RouteValue struct {
 	AuthRequired  bool                  `json:"auth_required"`
 	RateLimitID   *string               `json:"rate_limit_id"`
 	RateLimit     *RateLimitPolicyValue `json:"rate_limit,omitempty"`
+	CORS          *CORSValue            `json:"cors,omitempty"`
 	Priority      int                   `json:"priority"`
 	Service       ServiceValue          `json:"service"`
 	Instances     []InstanceValue       `json:"instances"`
+}
+
+type CORSValue struct {
+	AllowedOrigins   []string `json:"allowed_origins"`
+	AllowedMethods   []string `json:"allowed_methods"`
+	AllowedHeaders   []string `json:"allowed_headers"`
+	AllowCredentials bool     `json:"allow_credentials"`
+	MaxAge           int      `json:"max_age"`
 }
 
 type RateLimitPolicyValue struct {

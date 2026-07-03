@@ -13,6 +13,7 @@ type UpstreamRoute struct {
 	StripPrefix   bool
 	RewriteTarget *string
 	RateLimit     *configcache.RateLimitPolicyValue
+	CORS          *configcache.CORSValue
 
 	ServiceID   string
 	ServiceName string
