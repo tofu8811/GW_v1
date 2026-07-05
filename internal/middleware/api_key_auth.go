@@ -46,30 +46,39 @@ func (a *APIKeyAuth) Authenticate(c *fiber.Ctx, routeID string, method string, r
 	}
 
 	var (
-		apiKeyID   string
-		userID     *string
-		scopes     []string
-		isActive   bool
-		expiresAt  *time.Time
-		userActive *bool
+		apiKeyID     string
+		ownerUserID  *string
+		scopes       []string
+		isActive     bool
+		expiresAt    *time.Time
+		revokedAt    *time.Time
+		clientActive bool
 	)
 	err = a.db.QueryRow(c.Context(), `
-		SELECT ak.id::text, ak.user_id::text, ak.scopes, ak.is_active, ak.expires_at, u.is_active
+		SELECT ak.id::text,
+		       c.owner_user_id::text,
+		       COALESCE(array_agg(p.action || ':' || p.resource) FILTER (WHERE p.id IS NOT NULL), '{}'::text[]) AS scopes,
+		       ak.is_active,
+		       ak.expires_at,
+		       ak.revoked_at,
+		       c.is_active
 		FROM api_keys ak
-		LEFT JOIN users u ON u.id = ak.user_id
+		JOIN clients c ON c.id = ak.client_id
+		LEFT JOIN api_key_scopes aks ON aks.api_key_id = ak.id
+		LEFT JOIN permissions p ON p.id = aks.permission_id AND p.deleted_at IS NULL AND p.is_active
 		WHERE ak.key_hash = $1
-	`, keyHash).Scan(&apiKeyID, &userID, &scopes, &isActive, &expiresAt, &userActive)
+		  AND ak.deleted_at IS NULL
+		  AND c.deleted_at IS NULL
+		GROUP BY ak.id, c.owner_user_id, c.is_active
+	`, keyHash).Scan(&apiKeyID, &ownerUserID, &scopes, &isActive, &expiresAt, &revokedAt, &clientActive)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return response.Unauthorized(c, "invalid API key")
 	}
 	if err != nil {
 		return response.InternalServerError(c)
 	}
-	if !isActive || (expiresAt != nil && !expiresAt.After(time.Now())) {
-		return response.Unauthorized(c, "API key is inactive or expired")
-	}
-	if userActive != nil && !*userActive {
-		return response.Unauthorized(c, "API key owner is inactive")
+	if !isActive || !clientActive || revokedAt != nil || (expiresAt != nil && !expiresAt.After(time.Now())) {
+		return response.Unauthorized(c, "API key is inactive, revoked, or expired")
 	}
 	if !ScopeAllowsRoute(scopes, routeID, method, routePath) {
 		return response.Forbidden(c, "API key does not have access to this route")
@@ -82,8 +91,8 @@ func (a *APIKeyAuth) Authenticate(c *fiber.Ctx, routeID string, method string, r
 	c.Locals(LocalsAPIKeyID, apiKeyID)
 	c.Locals(LocalsAPIKeyScopes, scopes)
 	SetAPIKeyLogContext(c, apiKeyID)
-	if userID != nil {
-		c.Locals(LocalsUserID, *userID)
+	if ownerUserID != nil {
+		c.Locals(LocalsUserID, *ownerUserID)
 	}
 	c.Request().Header.Del(apiKeyHeader)
 

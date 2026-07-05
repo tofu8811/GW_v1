@@ -2,18 +2,28 @@ package apikeys
 
 import "testing"
 
-func TestNormalizeScopes(t *testing.T) {
-	scopes, err := normalizeScopes([]string{" GET:/api/orders ", "GET:/api/orders", "*"})
+func TestParsePermissionIDs(t *testing.T) {
+	ids, err := parsePermissionIDs([]string{
+		"01972f6a-0002-7000-8000-000000000001",
+		" 01972f6a-0002-7000-8000-000000000001 ",
+		"01972f6a-0002-7000-8000-000000000002",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(scopes) != 2 || scopes[0] != "GET:/api/orders" || scopes[1] != "*" {
-		t.Fatalf("unexpected scopes: %#v", scopes)
+	if len(ids) != 2 {
+		t.Fatalf("unexpected permission ids: %#v", ids)
 	}
 }
 
-func TestNormalizeScopesRequiresValue(t *testing.T) {
-	if _, err := normalizeScopes([]string{" "}); err == nil {
+func TestParsePermissionIDsRequiresValue(t *testing.T) {
+	if _, err := parsePermissionIDs([]string{" "}); err == nil {
+		t.Fatal("expected an error")
+	}
+}
+
+func TestParsePermissionIDsRejectsInvalidUUID(t *testing.T) {
+	if _, err := parsePermissionIDs([]string{"GET:/api/orders"}); err == nil {
 		t.Fatal("expected an error")
 	}
 }

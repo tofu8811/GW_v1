@@ -11,8 +11,10 @@ import (
 	"gateway-api/helper/pagination"
 	"gateway-api/helper/response"
 	"gateway-api/helper/validation"
+	"gateway-api/internal/middleware"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 )
 
 const apiKeyPrefix = "gw_live_"
@@ -31,15 +33,15 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		return response.BadRequest(c, "invalid request body")
 	}
 
-	userID, err := validation.ParseOptionalUUID("user_id", req.UserID)
+	clientID, err := validation.ParseRequiredUUID("client_id", req.ClientID)
+	if err != nil {
+		return response.BadRequest(c, err.Error())
+	}
+	permissionIDs, err := parsePermissionIDs(req.PermissionIDs)
 	if err != nil {
 		return response.BadRequest(c, err.Error())
 	}
 	rateLimitID, err := validation.ParseOptionalUUID("rate_limit_id", req.RateLimitID)
-	if err != nil {
-		return response.BadRequest(c, err.Error())
-	}
-	scopes, err := normalizeScopes(req.Scopes)
 	if err != nil {
 		return response.BadRequest(c, err.Error())
 	}
@@ -60,11 +62,12 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	if err != nil {
 		return response.InternalServerError(c)
 	}
+	createdBy := currentUserID(c)
 
 	key := APIKey{
 		ID: id, KeyHash: keyHash, KeyPrefix: rawKey[:12], Label: normalizedOptionalString(req.Label),
-		UserID: userID, Scopes: scopes, RateLimitID: rateLimitID, ExpiresAt: req.ExpiresAt,
-		IsActive: boolValue(req.IsActive, true),
+		ClientID: clientID, PermissionIDs: permissionIDs, RateLimitID: rateLimitID,
+		ExpiresAt: req.ExpiresAt, IsActive: boolValue(req.IsActive, true), CreatedBy: createdBy,
 	}
 	if err := h.repository.Create(c.Context(), &key); err != nil {
 		return handleDBError(c, err)
@@ -125,14 +128,14 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 	if req.Label != nil {
 		key.Label = normalizedOptionalString(req.Label)
 	}
-	if req.UserID != nil {
-		key.UserID, err = validation.ParseOptionalUUID("user_id", req.UserID)
+	if req.ClientID != nil {
+		key.ClientID, err = validation.ParseRequiredUUID("client_id", *req.ClientID)
 		if err != nil {
 			return response.BadRequest(c, err.Error())
 		}
 	}
-	if req.Scopes != nil {
-		key.Scopes, err = normalizeScopes(*req.Scopes)
+	if req.PermissionIDs != nil {
+		key.PermissionIDs, err = parsePermissionIDs(*req.PermissionIDs)
 		if err != nil {
 			return response.BadRequest(c, err.Error())
 		}
@@ -171,7 +174,6 @@ func (h *Handler) Revoke(c *fiber.Ctx) error {
 		return handleDBError(c, err)
 	}
 	return response.OK(c, toResponse(*key))
-
 }
 
 func (h *Handler) Rotate(c *fiber.Ctx) error {
@@ -200,22 +202,26 @@ func (h *Handler) Rotate(c *fiber.Ctx) error {
 	return response.OK(c, CreatedAPIKeyResponse{APIKeyResponse: toResponse(*key), Key: rawKey})
 }
 
-func normalizeScopes(scopes []string) ([]string, error) {
-	unique := make(map[string]struct{}, len(scopes))
-	result := make([]string, 0, len(scopes))
-	for _, scope := range scopes {
-		normalized := strings.TrimSpace(scope)
+func parsePermissionIDs(values []string) ([]uuid.UUID, error) {
+	unique := make(map[uuid.UUID]struct{}, len(values))
+	result := make([]uuid.UUID, 0, len(values))
+	for _, value := range values {
+		normalized := strings.TrimSpace(value)
 		if normalized == "" {
 			continue
 		}
-		if _, exists := unique[normalized]; exists {
+		id, err := uuid.Parse(normalized)
+		if err != nil {
+			return nil, validation.FieldError{Field: "permission_ids", Message: "contains invalid permission id"}
+		}
+		if _, exists := unique[id]; exists {
 			continue
 		}
-		unique[normalized] = struct{}{}
-		result = append(result, normalized)
+		unique[id] = struct{}{}
+		result = append(result, id)
 	}
 	if len(result) == 0 {
-		return nil, validation.FieldError{Field: "scopes", Message: "at least one scope is required"}
+		return nil, validation.FieldError{Field: "permission_ids", Message: "at least one permission is required"}
 	}
 	return result, nil
 }
@@ -238,22 +244,38 @@ func boolValue(value *bool, fallback bool) bool {
 	return *value
 }
 
-func toResponse(key APIKey) APIKeyResponse {
-	var userID *string
-	if key.UserID != nil {
-		value := key.UserID.String()
-		userID = &value
+func currentUserID(c *fiber.Ctx) *uuid.UUID {
+	value := middleware.GetUserID(c)
+	if value == "" {
+		return nil
 	}
+	id, err := uuid.Parse(value)
+	if err != nil {
+		return nil
+	}
+	return &id
+}
+
+func toResponse(key APIKey) APIKeyResponse {
 	var rateLimitID *string
 	if key.RateLimitID != nil {
 		value := key.RateLimitID.String()
 		rateLimitID = &value
 	}
+	var createdBy *string
+	if key.CreatedBy != nil {
+		value := key.CreatedBy.String()
+		createdBy = &value
+	}
+	permissionIDs := make([]string, 0, len(key.PermissionIDs))
+	for _, permissionID := range key.PermissionIDs {
+		permissionIDs = append(permissionIDs, permissionID.String())
+	}
 	return APIKeyResponse{
-		ID: key.ID.String(), KeyPrefix: key.KeyPrefix, Label: key.Label, UserID: userID,
-		Scopes: key.Scopes, RateLimitID: rateLimitID, ExpiresAt: key.ExpiresAt,
-		IsActive: key.IsActive, LastUsedAt: key.LastUsedAt,
-		CreatedAt: key.CreatedAt, UpdatedAt: key.UpdatedAt,
+		ID: key.ID.String(), KeyPrefix: key.KeyPrefix, Label: key.Label, ClientID: key.ClientID.String(),
+		PermissionIDs: permissionIDs, RateLimitID: rateLimitID, ExpiresAt: key.ExpiresAt,
+		IsActive: key.IsActive, RevokedAt: key.RevokedAt, LastUsedAt: key.LastUsedAt,
+		CreatedBy: createdBy, CreatedAt: key.CreatedAt, UpdatedAt: key.UpdatedAt,
 	}
 }
 

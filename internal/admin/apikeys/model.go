@@ -7,16 +7,18 @@ import (
 )
 
 type APIKey struct {
-	ID          uuid.UUID
-	KeyHash     string
-	KeyPrefix   string
-	Label       *string
-	UserID      *uuid.UUID
-	Scopes      []string
-	RateLimitID *uuid.UUID
-	ExpiresAt   *time.Time
-	IsActive    bool
-	LastUsedAt  *time.Time
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID            uuid.UUID
+	KeyHash       string
+	KeyPrefix     string
+	Label         *string
+	ClientID      uuid.UUID
+	PermissionIDs []uuid.UUID
+	RateLimitID   *uuid.UUID
+	ExpiresAt     *time.Time
+	IsActive      bool
+	RevokedAt     *time.Time
+	LastUsedAt    *time.Time
+	CreatedBy     *uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }

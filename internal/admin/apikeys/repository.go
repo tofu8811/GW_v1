@@ -22,23 +22,33 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 }
 
 func (r *Repository) Create(ctx context.Context, apiKey *APIKey) error {
-	return r.db.QueryRow(ctx, `
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	err = tx.QueryRow(ctx, `
 		INSERT INTO api_keys (
-			id, key_hash, key_prefix, label, user_id, scopes,
-			rate_limit_id, expires_at, is_active
+			id, key_hash, key_prefix, label, client_id,
+			rate_limit_id, expires_at, is_active, created_by
 		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
 		RETURNING created_at, updated_at
-	`, apiKey.ID, apiKey.KeyHash, apiKey.KeyPrefix, apiKey.Label, apiKey.UserID,
-		apiKey.Scopes, apiKey.RateLimitID, apiKey.ExpiresAt, apiKey.IsActive,
+	`, apiKey.ID, apiKey.KeyHash, apiKey.KeyPrefix, apiKey.Label, apiKey.ClientID,
+		apiKey.RateLimitID, apiKey.ExpiresAt, apiKey.IsActive, apiKey.CreatedBy,
 	).Scan(&apiKey.CreatedAt, &apiKey.UpdatedAt)
+	if err != nil {
+		return err
+	}
+	if err := replacePermissions(ctx, tx, apiKey.ID, apiKey.PermissionIDs); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]APIKey, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT id, key_prefix, label, user_id, scopes, rate_limit_id,
-		       expires_at, is_active, last_used_at, created_at, updated_at
-		FROM api_keys
-		ORDER BY created_at DESC
+	rows, err := r.db.Query(ctx, selectAPIKeysQuery(`WHERE ak.deleted_at IS NULL`)+`
+		ORDER BY ak.created_at DESC
 		LIMIT $1 OFFSET $2
 	`, p.Limit, p.Offset)
 	if err != nil {
@@ -48,10 +58,8 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]AP
 
 	keys := make([]APIKey, 0)
 	for rows.Next() {
-		var key APIKey
-		if err := rows.Scan(&key.ID, &key.KeyPrefix, &key.Label, &key.UserID, &key.Scopes,
-			&key.RateLimitID, &key.ExpiresAt, &key.IsActive, &key.LastUsedAt,
-			&key.CreatedAt, &key.UpdatedAt); err != nil {
+		key, err := scanAPIKey(rows)
+		if err != nil {
 			return nil, err
 		}
 		keys = append(keys, key)
@@ -61,79 +69,117 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]AP
 
 func (r *Repository) Count(ctx context.Context) (int64, error) {
 	var total int64
-	err := r.db.QueryRow(ctx, `SELECT count(*) FROM api_keys`).Scan(&total)
+	err := r.db.QueryRow(ctx, `SELECT count(*) FROM api_keys WHERE deleted_at IS NULL`).Scan(&total)
 	return total, err
 }
 
 func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*APIKey, error) {
-	var key APIKey
-	err := r.db.QueryRow(ctx, `
-		SELECT id, key_prefix, label, user_id, scopes, rate_limit_id,
-		       expires_at, is_active, last_used_at, created_at, updated_at
-		FROM api_keys WHERE id = $1
-	`, id).Scan(&key.ID, &key.KeyPrefix, &key.Label, &key.UserID, &key.Scopes,
-		&key.RateLimitID, &key.ExpiresAt, &key.IsActive, &key.LastUsedAt,
-		&key.CreatedAt, &key.UpdatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrAPIKeyNotFound
-	}
+	rows, err := r.db.Query(ctx, selectAPIKeysQuery(`WHERE ak.id = $1 AND ak.deleted_at IS NULL`), id)
 	if err != nil {
 		return nil, err
 	}
-	return &key, nil
+	defer rows.Close()
+	if !rows.Next() {
+		if rows.Err() != nil {
+			return nil, rows.Err()
+		}
+		return nil, ErrAPIKeyNotFound
+	}
+	key, err := scanAPIKey(rows)
+	if err != nil {
+		return nil, err
+	}
+	return &key, rows.Err()
 }
 
 func (r *Repository) Update(ctx context.Context, apiKey *APIKey) error {
-	err := r.db.QueryRow(ctx, `
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	err = tx.QueryRow(ctx, `
 		UPDATE api_keys SET
-			label = $2, user_id = $3, scopes = $4, rate_limit_id = $5,
-			expires_at = $6, is_active = $7
-		WHERE id = $1
+			label = $2, client_id = $3, rate_limit_id = $4,
+			expires_at = $5, is_active = $6
+		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING updated_at
-	`, apiKey.ID, apiKey.Label, apiKey.UserID, apiKey.Scopes, apiKey.RateLimitID,
+	`, apiKey.ID, apiKey.Label, apiKey.ClientID, apiKey.RateLimitID,
 		apiKey.ExpiresAt, apiKey.IsActive).Scan(&apiKey.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrAPIKeyNotFound
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	if err := replacePermissions(ctx, tx, apiKey.ID, apiKey.PermissionIDs); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *Repository) Revoke(ctx context.Context, id uuid.UUID) (*APIKey, error) {
-	var key APIKey
-	err := r.db.QueryRow(ctx, `
+	_, err := r.db.Exec(ctx, `
 		UPDATE api_keys
-		SET is_active = FALSE
-		WHERE id = $1
-		RETURNING id, key_prefix, label, user_id, scopes, rate_limit_id,
-		          expires_at, is_active, last_used_at, created_at, updated_at
-	`, id).Scan(&key.ID, &key.KeyPrefix, &key.Label, &key.UserID, &key.Scopes,
-		&key.RateLimitID, &key.ExpiresAt, &key.IsActive, &key.LastUsedAt,
-		&key.CreatedAt, &key.UpdatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrAPIKeyNotFound
-	}
+		SET is_active = FALSE, revoked_at = COALESCE(revoked_at, now())
+		WHERE id = $1 AND deleted_at IS NULL
+	`, id)
 	if err != nil {
 		return nil, err
 	}
-	return &key, nil
+	return r.FindByID(ctx, id)
 }
 
 func (r *Repository) Rotate(ctx context.Context, id uuid.UUID, keyHash string, keyPrefix string) (*APIKey, error) {
-	var key APIKey
-	err := r.db.QueryRow(ctx, `
+	_, err := r.db.Exec(ctx, `
 		UPDATE api_keys
-		SET key_hash = $2, key_prefix = $3, is_active = TRUE, last_used_at = NULL
-		WHERE id = $1
-		RETURNING id, key_prefix, label, user_id, scopes, rate_limit_id,
-		          expires_at, is_active, last_used_at, created_at, updated_at
-	`, id, keyHash, keyPrefix).Scan(&key.ID, &key.KeyPrefix, &key.Label, &key.UserID,
-		&key.Scopes, &key.RateLimitID, &key.ExpiresAt, &key.IsActive,
-		&key.LastUsedAt, &key.CreatedAt, &key.UpdatedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrAPIKeyNotFound
-	}
+		SET key_hash = $2, key_prefix = $3, is_active = TRUE, revoked_at = NULL, last_used_at = NULL
+		WHERE id = $1 AND deleted_at IS NULL
+	`, id, keyHash, keyPrefix)
 	if err != nil {
 		return nil, err
 	}
-	return &key, nil
+	return r.FindByID(ctx, id)
+}
+
+type apiKeyScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanAPIKey(row apiKeyScanner) (APIKey, error) {
+	var key APIKey
+	err := row.Scan(&key.ID, &key.KeyPrefix, &key.Label, &key.ClientID, &key.PermissionIDs,
+		&key.RateLimitID, &key.ExpiresAt, &key.IsActive, &key.RevokedAt, &key.LastUsedAt,
+		&key.CreatedBy, &key.CreatedAt, &key.UpdatedAt)
+	return key, err
+}
+
+func selectAPIKeysQuery(whereClause string) string {
+	return `
+		SELECT ak.id, ak.key_prefix, ak.label, ak.client_id,
+		       COALESCE(array_agg(aks.permission_id) FILTER (WHERE aks.permission_id IS NOT NULL), '{}'::uuid[]) AS permission_ids,
+		       ak.rate_limit_id, ak.expires_at, ak.is_active, ak.revoked_at, ak.last_used_at,
+		       ak.created_by, ak.created_at, ak.updated_at
+		FROM api_keys ak
+		LEFT JOIN api_key_scopes aks ON aks.api_key_id = ak.id
+		` + whereClause + `
+		GROUP BY ak.id
+	`
+}
+
+func replacePermissions(ctx context.Context, tx pgx.Tx, apiKeyID uuid.UUID, permissionIDs []uuid.UUID) error {
+	if _, err := tx.Exec(ctx, `DELETE FROM api_key_scopes WHERE api_key_id = $1`, apiKeyID); err != nil {
+		return err
+	}
+	for _, permissionID := range permissionIDs {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO api_key_scopes (api_key_id, permission_id)
+			VALUES ($1, $2)
+			ON CONFLICT DO NOTHING
+		`, apiKeyID, permissionID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
