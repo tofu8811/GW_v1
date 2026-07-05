@@ -36,7 +36,7 @@ type requestLogEntry struct {
 	ErrorMessage      string    `json:"error_message"`
 }
 
-func RequestLogger(writer io.Writer, appLogger *slog.Logger) fiber.Handler {
+func Logger(writer io.Writer, appLogger *slog.Logger) fiber.Handler {
 	if writer == nil {
 		writer = io.Discard
 	}

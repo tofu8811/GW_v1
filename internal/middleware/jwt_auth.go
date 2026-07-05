@@ -38,6 +38,9 @@ func JWTAuth(secret string, rdb *redis.Client, databases ...*pgxpool.Pool) fiber
 		if err := authenticateJWT(c, secret, rdb, db); err != nil {
 			return err
 		}
+		if c.Response().StatusCode() >= fiber.StatusBadRequest {
+			return nil
+		}
 		return c.Next()
 	}
 }

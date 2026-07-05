@@ -52,6 +52,9 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 	startedAt := time.Now()
 	requestPath := c.Path()
 	method := c.Method()
+	if method == fiber.MethodOptions && strings.TrimSpace(c.Get(fiber.HeaderAccessControlRequestMethod)) != "" {
+		return h.handleCORSPreflight(c, requestPath)
+	}
 
 	route, params, err := h.findRoute(c.Context(), requestPath, method)
 	if errors.Is(err, ErrRouteNotFound) {
@@ -74,6 +77,14 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 		return response.InternalServerError(c)
 	}
 
+	origin := strings.TrimSpace(c.Get(fiber.HeaderOrigin))
+	if origin != "" {
+		if err := validateCORSRequest(route.CORS, origin, method); err != nil {
+			return response.Forbidden(c, err.Error())
+		}
+		defer setActualCORSHeaders(c, route.CORS, origin)
+	}
+
 	appmiddleware.SetRouteLogContext(c, route.RouteID, route.ServiceName)
 	if route.AuthRequired {
 		if h.authenticator == nil {
@@ -82,6 +93,9 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 		}
 		if err := h.authenticator.Authenticate(c, route.RouteID, route.RouteMethod, route.RoutePath); err != nil {
 			return err
+		}
+		if c.Response().StatusCode() >= fiber.StatusBadRequest {
+			return nil
 		}
 	}
 
@@ -148,6 +162,7 @@ func upstreamRoutesFromCache(route configcache.RouteValue) []UpstreamRoute {
 			StripPrefix:           route.StripPrefix,
 			RewriteTarget:         route.RewriteTarget,
 			RateLimit:             route.RateLimit,
+			CORS:                  route.CORS,
 			ServiceID:             route.Service.ID,
 			ServiceName:           route.Service.Name,
 			Protocol:              route.Service.Protocol,
