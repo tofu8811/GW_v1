@@ -22,6 +22,24 @@ func TestNormalizeConfigNormalizesAndDeduplicates(t *testing.T) {
 	if len(config.AllowedHeaders) != 2 || config.MaxAge != maxAge {
 		t.Fatalf("unexpected config: %#v", config)
 	}
+	if !config.IsActive {
+		t.Fatal("expected CORS config to be active by default")
+	}
+}
+
+func TestNormalizeConfigPreservesInactiveState(t *testing.T) {
+	inactive := false
+	config, err := normalizeConfig(UpsertCORSConfigRequest{
+		AllowedOrigins: []string{"http://localhost:5173"},
+		AllowedMethods: []string{"GET"},
+		IsActive:       &inactive,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.IsActive {
+		t.Fatal("expected CORS config to remain inactive")
+	}
 }
 
 func TestNormalizeConfigRejectsWildcardWithCredentials(t *testing.T) {

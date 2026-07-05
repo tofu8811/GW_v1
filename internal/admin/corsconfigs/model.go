@@ -1,6 +1,10 @@
 package corsconfigs
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type CORSConfig struct {
 	ID               uuid.UUID
@@ -10,4 +14,8 @@ type CORSConfig struct {
 	AllowedHeaders   []string
 	AllowCredentials bool
 	MaxAge           int
+	IsActive         bool
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	DeletedAt        *time.Time
 }

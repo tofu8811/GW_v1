@@ -138,7 +138,15 @@ func normalizeConfig(req UpsertCORSConfigRequest) (CORSConfig, error) {
 		AllowedHeaders:   normalizeUnique(req.AllowedHeaders, false),
 		AllowCredentials: req.AllowCredentials,
 		MaxAge:           maxAge,
+		IsActive:         boolValue(req.IsActive, true),
 	}, nil
+}
+
+func boolValue(value *bool, fallback bool) bool {
+	if value == nil {
+		return fallback
+	}
+	return *value
 }
 
 func normalizeUnique(values []string, upper bool) []string {
@@ -180,5 +188,8 @@ func toResponse(config CORSConfig) CORSConfigResponse {
 		AllowedHeaders:   config.AllowedHeaders,
 		AllowCredentials: config.AllowCredentials,
 		MaxAge:           config.MaxAge,
+		IsActive:         config.IsActive,
+		CreatedAt:        config.CreatedAt,
+		UpdatedAt:        config.UpdatedAt,
 	}
 }
