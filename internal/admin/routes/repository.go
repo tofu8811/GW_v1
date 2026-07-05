@@ -52,6 +52,7 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Ro
 		SELECT id, path, method, service_id, strip_prefix, rewrite_target,
 		       auth_required, rate_limit_id, priority, is_active, created_at, updated_at
 		FROM routes
+		WHERE deleted_at IS NULL
 		ORDER BY priority DESC, created_at DESC
 		LIMIT $1 OFFSET $2
 	`
@@ -93,7 +94,7 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Ro
 
 func (r *Repository) Count(ctx context.Context) (int64, error) {
 	var total int64
-	err := r.db.QueryRow(ctx, `SELECT count(*) FROM routes`).Scan(&total)
+	err := r.db.QueryRow(ctx, `SELECT count(*) FROM routes WHERE deleted_at IS NULL`).Scan(&total)
 	return total, err
 }
 
@@ -102,7 +103,7 @@ func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*Route, error)
 		SELECT id, path, method, service_id, strip_prefix, rewrite_target,
 		       auth_required, rate_limit_id, priority, is_active, created_at, updated_at
 		FROM routes
-		WHERE id = $1
+		WHERE id = $1 AND deleted_at IS NULL
 	`
 
 	var route Route
@@ -145,7 +146,7 @@ func (r *Repository) Update(ctx context.Context, route *Route) error {
 		    rate_limit_id = $8,
 		    priority = $9,
 		    is_active = $10
-		WHERE id = $1
+		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING updated_at
 	`
 
@@ -172,7 +173,7 @@ func (r *Repository) Update(ctx context.Context, route *Route) error {
 }
 
 func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
-	result, err := r.db.Exec(ctx, `DELETE FROM routes WHERE id = $1`, id)
+	result, err := r.db.Exec(ctx, `UPDATE routes SET is_active = FALSE, deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`, id)
 	if err != nil {
 		return err
 	}

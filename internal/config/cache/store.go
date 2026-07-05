@@ -337,10 +337,12 @@ COALESCE(rlp.window_seconds, 0),
 			)
 		FROM routes r
 		JOIN services s ON s.id = r.service_id
-		LEFT JOIN rate_limit_policies rlp ON rlp.id = r.rate_limit_id AND rlp.is_active = TRUE
-		LEFT JOIN service_instances si ON si.service_id = s.id AND si.is_active = TRUE
+		LEFT JOIN rate_limit_policies rlp ON rlp.id = r.rate_limit_id AND rlp.is_active = TRUE AND rlp.deleted_at IS NULL
+		LEFT JOIN service_instances si ON si.service_id = s.id AND si.is_active = TRUE AND si.deleted_at IS NULL
 		WHERE r.is_active = TRUE
+		  AND r.deleted_at IS NULL
 		  AND s.is_active = TRUE
+		  AND s.deleted_at IS NULL
 		  AND s.protocol = 'http'
 		GROUP BY r.id, s.id, rlp.id
 		ORDER BY r.priority DESC, length(r.path) DESC, r.created_at DESC
@@ -417,7 +419,9 @@ func readPlugins(ctx context.Context, tx pgx.Tx, schemaVersion int) (map[string]
 		FROM route_plugins rp
 		JOIN gateway_plugins gp ON gp.id = rp.plugin_id
 		WHERE rp.is_active = TRUE
+		  AND rp.deleted_at IS NULL
 		  AND gp.is_active = TRUE
+		  AND gp.deleted_at IS NULL
 		ORDER BY rp.route_id, gp.phase, rp.priority
 	`)
 	if err != nil {

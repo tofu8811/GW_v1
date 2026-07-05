@@ -52,6 +52,7 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Se
 		SELECT id, name, description, protocol, lb_strategy, COALESCE(health_path, ''), timeout_ms,
 		       retry_count, circuit_breaker_enabled, is_active, created_at, updated_at
 		FROM services
+		WHERE deleted_at IS NULL
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2
 	`
@@ -93,7 +94,7 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Se
 
 func (r *Repository) Count(ctx context.Context) (int64, error) {
 	var total int64
-	err := r.db.QueryRow(ctx, `SELECT count(*) FROM services`).Scan(&total)
+	err := r.db.QueryRow(ctx, `SELECT count(*) FROM services WHERE deleted_at IS NULL`).Scan(&total)
 	return total, err
 }
 
@@ -102,7 +103,7 @@ func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*Service, erro
 		SELECT id, name, description, protocol, lb_strategy, COALESCE(health_path, ''), timeout_ms,
 		       retry_count, circuit_breaker_enabled, is_active, created_at, updated_at
 		FROM services
-		WHERE id = $1
+		WHERE id = $1 AND deleted_at IS NULL
 	`
 
 	var service Service
@@ -145,7 +146,7 @@ func (r *Repository) Update(ctx context.Context, service *Service) error {
 		    retry_count = $8,
 		    circuit_breaker_enabled = $9,
 		    is_active = $10
-		WHERE id = $1
+		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING updated_at
 	`
 
@@ -172,7 +173,7 @@ func (r *Repository) Update(ctx context.Context, service *Service) error {
 }
 
 func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
-	result, err := r.db.Exec(ctx, `DELETE FROM services WHERE id = $1`, id)
+	result, err := r.db.Exec(ctx, `UPDATE services SET is_active = FALSE, deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`, id)
 	if err != nil {
 		return err
 	}

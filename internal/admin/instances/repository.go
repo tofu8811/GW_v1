@@ -44,6 +44,7 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Se
 	query := `
 		SELECT id, service_id, host, port, weight, is_active, created_at
 		FROM service_instances
+		WHERE deleted_at IS NULL
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2
 	`
@@ -59,7 +60,7 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Se
 
 func (r *Repository) Count(ctx context.Context) (int64, error) {
 	var total int64
-	err := r.db.QueryRow(ctx, `SELECT count(*) FROM service_instances`).Scan(&total)
+	err := r.db.QueryRow(ctx, `SELECT count(*) FROM service_instances WHERE deleted_at IS NULL`).Scan(&total)
 	return total, err
 }
 
@@ -67,7 +68,7 @@ func (r *Repository) FindByServiceID(ctx context.Context, serviceID uuid.UUID, p
 	query := `
 		SELECT id, service_id, host, port, weight, is_active, created_at
 		FROM service_instances
-		WHERE service_id = $1
+		WHERE service_id = $1 AND deleted_at IS NULL
 		ORDER BY created_at DESC
 		LIMIT $2 OFFSET $3
 	`
@@ -83,7 +84,7 @@ func (r *Repository) FindByServiceID(ctx context.Context, serviceID uuid.UUID, p
 
 func (r *Repository) CountByServiceID(ctx context.Context, serviceID uuid.UUID) (int64, error) {
 	var total int64
-	err := r.db.QueryRow(ctx, `SELECT count(*) FROM service_instances WHERE service_id = $1`, serviceID).Scan(&total)
+	err := r.db.QueryRow(ctx, `SELECT count(*) FROM service_instances WHERE service_id = $1 AND deleted_at IS NULL`, serviceID).Scan(&total)
 	return total, err
 }
 
@@ -91,7 +92,7 @@ func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*ServiceInstan
 	query := `
 		SELECT id, service_id, host, port, weight, is_active, created_at
 		FROM service_instances
-		WHERE id = $1
+		WHERE id = $1 AND deleted_at IS NULL
 	`
 
 	var instance ServiceInstance
@@ -125,7 +126,7 @@ func (r *Repository) Update(ctx context.Context, instance *ServiceInstance) erro
 		    port = $4,
 		    weight = $5,
 		    is_active = $6
-		WHERE id = $1
+		WHERE id = $1 AND deleted_at IS NULL
 	`
 
 	result, err := r.db.Exec(
@@ -150,7 +151,7 @@ func (r *Repository) Update(ctx context.Context, instance *ServiceInstance) erro
 }
 
 func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
-	result, err := r.db.Exec(ctx, `DELETE FROM service_instances WHERE id = $1`, id)
+	result, err := r.db.Exec(ctx, `UPDATE service_instances SET is_active = FALSE, deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`, id)
 	if err != nil {
 		return err
 	}

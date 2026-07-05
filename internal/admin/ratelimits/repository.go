@@ -46,6 +46,7 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Ra
 	query := `
 		SELECT id, name, limit_type, max_requests, window_seconds, is_active, created_at, updated_at
 		FROM rate_limit_policies
+		WHERE deleted_at IS NULL
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2
 	`
@@ -80,7 +81,7 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Ra
 
 func (r *Repository) Count(ctx context.Context) (int64, error) {
 	var total int64
-	err := r.db.QueryRow(ctx, `SELECT count(*) FROM rate_limit_policies`).Scan(&total)
+	err := r.db.QueryRow(ctx, `SELECT count(*) FROM rate_limit_policies WHERE deleted_at IS NULL`).Scan(&total)
 	return total, err
 }
 
@@ -88,7 +89,7 @@ func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*RateLimitPoli
 	query := `
 		SELECT id, name, limit_type, max_requests, window_seconds, is_active, created_at, updated_at
 		FROM rate_limit_policies
-		WHERE id = $1
+		WHERE id = $1 AND deleted_at IS NULL
 	`
 
 	var policy RateLimitPolicy
@@ -120,7 +121,7 @@ func (r *Repository) Update(ctx context.Context, policy *RateLimitPolicy) error 
 		    max_requests = $4,
 		    window_seconds = $5,
 		    is_active = $6
-		WHERE id = $1
+		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING updated_at
 	`
 
@@ -142,7 +143,7 @@ func (r *Repository) Update(ctx context.Context, policy *RateLimitPolicy) error 
 }
 
 func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
-	result, err := r.db.Exec(ctx, `DELETE FROM rate_limit_policies WHERE id = $1`, id)
+	result, err := r.db.Exec(ctx, `UPDATE rate_limit_policies SET is_active = FALSE, deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`, id)
 	if err != nil {
 		return err
 	}

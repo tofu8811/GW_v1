@@ -5,37 +5,77 @@
 
 BEGIN;
 
+INSERT INTO clients (
+    id,
+    name,
+    client_type,
+    owner_user_id,
+    is_active
+)
+VALUES (
+    'b0000000-0000-0000-0000-000000000001',
+    'demo-developer-client',
+    'internal_app',
+    '40000000-0000-0000-0000-000000000002',
+    TRUE
+)
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    client_type = EXCLUDED.client_type,
+    owner_user_id = EXCLUDED.owner_user_id,
+    is_active = EXCLUDED.is_active;
+
+INSERT INTO permissions (id, resource, action)
+VALUES
+    ('01972f6a-0003-7000-8000-000000000001', '/api/orders', 'GET'),
+    ('01972f6a-0003-7000-8000-000000000002', '/api/order/create', 'POST'),
+    ('01972f6a-0003-7000-8000-000000000003', '/api/order/{id}', 'GET')
+ON CONFLICT (id) DO UPDATE SET
+    resource = EXCLUDED.resource,
+    action = EXCLUDED.action,
+    is_active = TRUE,
+    deleted_at = NULL;
+
 INSERT INTO api_keys (
     id,
     key_hash,
     key_prefix,
     label,
-    user_id,
-    scopes,
+    client_id,
     rate_limit_id,
     expires_at,
-    is_active
+    is_active,
+    created_by
 )
 VALUES
     (
         'a0000000-0000-0000-0000-000000000001',
-		'2d0a5af466f6c08642ae831a9ed890eb3f134b871b9c007c466e176d12eeccdd',
+        '2d0a5af466f6c08642ae831a9ed890eb3f134b871b9c007c466e176d12eeccdd',
         'gw_demo',
         'Demo developer API key',
-        '40000000-0000-0000-0000-000000000002',
-		ARRAY['GET:/api/orders', 'POST:/api/order/create', 'GET:/api/order/{id}'],
+        'b0000000-0000-0000-0000-000000000001',
         '50000000-0000-0000-0000-000000000003',
         now() + interval '90 days',
-        TRUE
+        TRUE,
+        '40000000-0000-0000-0000-000000000001'
     )
 ON CONFLICT (id) DO UPDATE SET
     key_hash = EXCLUDED.key_hash,
     key_prefix = EXCLUDED.key_prefix,
     label = EXCLUDED.label,
-    user_id = EXCLUDED.user_id,
-    scopes = EXCLUDED.scopes,
+    client_id = EXCLUDED.client_id,
     rate_limit_id = EXCLUDED.rate_limit_id,
     expires_at = EXCLUDED.expires_at,
-    is_active = EXCLUDED.is_active;
+    is_active = EXCLUDED.is_active,
+    revoked_at = NULL,
+    deleted_at = NULL,
+    created_by = EXCLUDED.created_by;
+
+INSERT INTO api_key_scopes (api_key_id, permission_id)
+VALUES
+    ('a0000000-0000-0000-0000-000000000001', '01972f6a-0003-7000-8000-000000000001'),
+    ('a0000000-0000-0000-0000-000000000001', '01972f6a-0003-7000-8000-000000000002'),
+    ('a0000000-0000-0000-0000-000000000001', '01972f6a-0003-7000-8000-000000000003')
+ON CONFLICT DO NOTHING;
 
 COMMIT;
