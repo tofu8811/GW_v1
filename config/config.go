@@ -17,6 +17,7 @@ type Config struct {
 	AppEnv      string
 	AppPort     string
 	LogFilePath string
+	GatewayNode string
 	DatabaseURL string
 	RedisAddr   string
 	RedisPass   string
@@ -41,6 +42,20 @@ type Config struct {
 	BreakerFailureThreshold int
 	BreakerOpenTimeout      time.Duration
 	BreakerHalfOpenMax      int
+
+	RabbitMQURL              string
+	RabbitMQLogExchange      string
+	RabbitMQLogQueue         string
+	RabbitMQLogRoutingKey    string
+	RabbitMQLogDLX           string
+	RabbitMQLogDLQ           string
+	RabbitMQPublishTimeout   time.Duration
+	ElasticsearchURL         string
+	ElasticsearchIndexPrefix string
+	LogConsumerBatchSize     int
+	LogConsumerFlushInterval time.Duration
+	LogConsumerPrefetch      int
+	LogServicePort           string
 }
 
 func Load() Config {
@@ -65,6 +80,7 @@ func Load() Config {
 		AppEnv:      getEnv("APP_ENV", "development"),
 		AppPort:     getEnv("APP_PORT", "8080"),
 		LogFilePath: getEnv("LOG_FILE", "logs/gateway.jsonl"),
+		GatewayNode: getEnv("GATEWAY_NODE", "gateway-api-1"),
 		DatabaseURL: databaseURL,
 		RedisAddr:   getEnv("REDIS_ADDR", "localhost:6379"),
 		RedisPass:   getEnv("REDIS_PASSWORD", ""),
@@ -89,6 +105,20 @@ func Load() Config {
 		BreakerFailureThreshold: intEnv("BREAKER_FAILURE_THRESHOLD", 5),
 		BreakerOpenTimeout:      durationEnv("BREAKER_OPEN_TIMEOUT", 15*time.Second),
 		BreakerHalfOpenMax:      intEnv("BREAKER_HALFOPEN_MAX", 1),
+
+		RabbitMQURL:              getEnv("RABBITMQ_URL", ""),
+		RabbitMQLogExchange:      getEnv("RABBITMQ_LOG_EXCHANGE", "gateway.logs.exchange"),
+		RabbitMQLogQueue:         getEnv("RABBITMQ_LOG_QUEUE", "gateway.logs.queue"),
+		RabbitMQLogRoutingKey:    getEnv("RABBITMQ_LOG_ROUTING_KEY", "gateway.request.completed"),
+		RabbitMQLogDLX:           getEnv("RABBITMQ_LOG_DLX", "gateway.logs.dlx"),
+		RabbitMQLogDLQ:           getEnv("RABBITMQ_LOG_DLQ", "gateway.logs.dlq"),
+		RabbitMQPublishTimeout:   durationEnv("RABBITMQ_PUBLISH_TIMEOUT", 500*time.Millisecond),
+		ElasticsearchURL:         getEnv("ELASTICSEARCH_URL", "http://localhost:9200"),
+		ElasticsearchIndexPrefix: getEnv("ELASTICSEARCH_LOG_INDEX_PREFIX", "gateway-logs"),
+		LogConsumerBatchSize:     intEnv("LOG_CONSUMER_BATCH_SIZE", 500),
+		LogConsumerFlushInterval: durationEnv("LOG_CONSUMER_FLUSH_INTERVAL", time.Second),
+		LogConsumerPrefetch:      intEnv("LOG_CONSUMER_PREFETCH", 100),
+		LogServicePort:           getEnv("LOG_SERVICE_PORT", "8081"),
 	}
 }
 

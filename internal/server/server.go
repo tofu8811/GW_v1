@@ -1,7 +1,6 @@
 package server
 
 import (
-	"io"
 	"log/slog"
 	"strings"
 
@@ -19,13 +18,13 @@ type Server struct {
 	Logger *slog.Logger
 }
 
-func New(logger *slog.Logger, healthHandler *health.Handler, requestLogWriter io.Writer) *Server {
+func New(logger *slog.Logger, healthHandler *health.Handler, requestLogSink appmiddleware.RequestLogSink, appEnv string, gatewayNode string) *Server {
 	app := fiber.New(fiber.Config{
 		AppName: "API Gateway",
 	})
 
 	app.Use(requestid.New())
-	app.Use(appmiddleware.Logger(requestLogWriter, logger))
+	app.Use(appmiddleware.LoggerWithSink(requestLogSink, logger, appEnv, gatewayNode))
 	app.Use(recover.New())
 	controlPlaneCORS := cors.New()
 	app.Use(func(c *fiber.Ctx) error {
