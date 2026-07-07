@@ -398,6 +398,9 @@ func buildBoolQuery(query model.LogQuery) map[string]any {
 	addTerm("client_ip", query.ClientIP)
 
 	boolQuery := map[string]any{"filter": filters}
+	if query.ExcludeControlPlane {
+		boolQuery["must_not"] = controlPlaneExclusions()
+	}
 	if strings.TrimSpace(query.Query) != "" {
 		boolQuery["must"] = []map[string]any{
 			{"multi_match": map[string]any{
@@ -407,6 +410,15 @@ func buildBoolQuery(query model.LogQuery) map[string]any {
 		}
 	}
 	return map[string]any{"bool": boolQuery}
+}
+
+func controlPlaneExclusions() []map[string]any {
+	return []map[string]any{
+		{"term": map[string]any{"method": "OPTIONS"}},
+		{"terms": map[string]any{"path": []string{"/health", "/ready"}}},
+		{"prefix": map[string]any{"path": "/admin/"}},
+		{"prefix": map[string]any{"path": "/auth/"}},
+	}
 }
 
 func buildSort(value string) []map[string]any {

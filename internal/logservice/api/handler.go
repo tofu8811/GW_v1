@@ -80,6 +80,7 @@ func (h *Handler) Logs(c *fiber.Ctx) error {
 
 func (h *Handler) Summary(c *fiber.Ctx) error {
 	query := parseLogQuery(c)
+	query.ExcludeControlPlane = true
 	data, err := h.store.Summary(c.UserContext(), query)
 	if err != nil {
 		return response.InternalServerError(c)
@@ -89,6 +90,7 @@ func (h *Handler) Summary(c *fiber.Ctx) error {
 
 func (h *Handler) RPS(c *fiber.Ctx) error {
 	query := parseLogQuery(c)
+	query.ExcludeControlPlane = true
 	data, err := h.store.RPS(c.UserContext(), query)
 	if err != nil {
 		return response.InternalServerError(c)
@@ -98,6 +100,7 @@ func (h *Handler) RPS(c *fiber.Ctx) error {
 
 func (h *Handler) ErrorRate(c *fiber.Ctx) error {
 	query := parseLogQuery(c)
+	query.ExcludeControlPlane = true
 	data, err := h.store.ErrorRate(c.UserContext(), query)
 	if err != nil {
 		return response.InternalServerError(c)
@@ -107,6 +110,7 @@ func (h *Handler) ErrorRate(c *fiber.Ctx) error {
 
 func (h *Handler) Latency(c *fiber.Ctx) error {
 	query := parseLogQuery(c)
+	query.ExcludeControlPlane = true
 	data, err := h.store.Latency(c.UserContext(), query)
 	if err != nil {
 		return response.InternalServerError(c)
@@ -116,6 +120,7 @@ func (h *Handler) Latency(c *fiber.Ctx) error {
 
 func (h *Handler) StatusCodes(c *fiber.Ctx) error {
 	query := parseLogQuery(c)
+	query.ExcludeControlPlane = true
 	data, err := h.store.StatusCodes(c.UserContext(), query)
 	if err != nil {
 		return response.InternalServerError(c)
@@ -125,6 +130,7 @@ func (h *Handler) StatusCodes(c *fiber.Ctx) error {
 
 func (h *Handler) TopRoutes(c *fiber.Ctx) error {
 	query := parseLogQuery(c)
+	query.ExcludeControlPlane = true
 	query.TopSortBy = c.Query("sort_by", "requests")
 	query.TopLimit = queryInt(c, "limit", 10)
 	data, err := h.store.TopRoutes(c.UserContext(), query)

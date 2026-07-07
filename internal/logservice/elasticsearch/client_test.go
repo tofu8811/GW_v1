@@ -40,3 +40,26 @@ func TestBuildSortDefaultsToTimestampDesc(t *testing.T) {
 		t.Fatalf("expected desc sort, got %#v", field["order"])
 	}
 }
+
+func TestBuildBoolQueryExcludesControlPlaneWhenEnabled(t *testing.T) {
+	query := buildBoolQuery(model.LogQuery{ExcludeControlPlane: true})
+	boolQuery, ok := query["bool"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected bool query, got %#v", query)
+	}
+	mustNot, ok := boolQuery["must_not"].([]map[string]any)
+	if !ok || len(mustNot) != 4 {
+		t.Fatalf("expected control-plane exclusions, got %#v", boolQuery["must_not"])
+	}
+}
+
+func TestBuildBoolQueryKeepsLogsUnfilteredByDefault(t *testing.T) {
+	query := buildBoolQuery(model.LogQuery{})
+	boolQuery, ok := query["bool"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected bool query, got %#v", query)
+	}
+	if _, exists := boolQuery["must_not"]; exists {
+		t.Fatalf("expected logs query to keep control-plane logs, got %#v", boolQuery)
+	}
+}

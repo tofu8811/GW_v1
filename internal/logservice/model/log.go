@@ -47,6 +47,8 @@ type LogQuery struct {
 	Interval    string
 	TopSortBy   string
 	TopLimit    int
+
+	ExcludeControlPlane bool
 }
 
 type PageMeta struct {

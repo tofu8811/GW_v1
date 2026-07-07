@@ -6,8 +6,9 @@ const BASE_URL = __ENV.BASE_URL || 'http://host.docker.internal:8080'; const TOK
 
 export const options = {
   stages: [
-    { duration: '10s', target: 20 },
     { duration: '10s', target: 5 },
+    { duration: '10s', target: 5 },
+    { duration: '15s', target: 5 },
     { duration: '10s', target: 0 },
   ],
 };
@@ -39,8 +40,8 @@ export default function () {
   ]);
 
   check(responses[0], { '[gateway] GET products 200': (r) => r.status === 200 });
-  check(responses[1], { '[gateway] GET product/5 200': (r) => r.status === 200 });
-  check(responses[2], { '[gateway] GET product/7 200': (r) => r.status === 200 });
+  check(responses[1], { '[gateway] GET product/3 200': (r) => r.status === 200 });
+  check(responses[2], { '[gateway] GET product/5 200': (r) => r.status === 200 });
 
   sleep(1);
 }

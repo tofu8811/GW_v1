@@ -77,7 +77,10 @@ func buildRealtimeBoolQuery(query model.RealtimeQuery) map[string]any {
 	addTerm("status_code", query.StatusCode)
 	addTerm("client_ip", query.ClientIP)
 
-	return map[string]any{"bool": map[string]any{"filter": filters}}
+	return map[string]any{"bool": map[string]any{
+		"filter":   filters,
+		"must_not": controlPlaneExclusions(),
+	}}
 }
 
 func buildDashboardAggregations(query model.RealtimeQuery) map[string]any {

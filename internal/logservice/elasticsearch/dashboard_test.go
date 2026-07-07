@@ -57,4 +57,8 @@ func TestBuildRealtimeBoolQueryUsesWindowAndFilters(t *testing.T) {
 	if !ok || len(filters) != 4 {
 		t.Fatalf("expected range plus 3 filters, got %#v", boolQuery["filter"])
 	}
+	mustNot, ok := boolQuery["must_not"].([]map[string]any)
+	if !ok || len(mustNot) != 4 {
+		t.Fatalf("expected realtime control-plane exclusions, got %#v", boolQuery["must_not"])
+	}
 }
