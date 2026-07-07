@@ -93,6 +93,18 @@ func (h *Handler) FindAll(c *fiber.Ctx) error {
 	return response.WithMeta(c, items, pagination.NewMeta(p, total))
 }
 
+func (h *Handler) Options(c *fiber.Ctx) error {
+	options, err := h.repository.FindOptions(c.Context())
+	if err != nil {
+		return response.InternalServerError(c)
+	}
+	return response.OK(c, APIKeyOptionsResponse{
+		Clients:     toOptionResponses(options.Clients),
+		Permissions: toOptionResponses(options.Permissions),
+		RateLimits:  toOptionResponses(options.RateLimits),
+	})
+}
+
 func (h *Handler) FindByID(c *fiber.Ctx) error {
 	id, err := validation.ParseRequiredUUID("id", c.Params("id"))
 	if err != nil {
@@ -267,19 +279,34 @@ func toResponse(key APIKey) APIKeyResponse {
 		value := key.CreatedBy.String()
 		createdBy = &value
 	}
-	permissionIDs := make([]string, 0, len(key.PermissionIDs))
-	for _, permissionID := range key.PermissionIDs {
-		permissionIDs = append(permissionIDs, permissionID.String())
+	permissions := make([]APIKeyPermissionResponse, 0, len(key.PermissionIDs))
+	for index, permissionID := range key.PermissionIDs {
+		name := ""
+		if index < len(key.Permissions) {
+			name = key.Permissions[index]
+		}
+		permissions = append(permissions, APIKeyPermissionResponse{ID: permissionID.String(), Name: name})
 	}
 	return APIKeyResponse{
 		ID: key.ID.String(), KeyPrefix: key.KeyPrefix, Label: key.Label, ClientID: key.ClientID.String(),
-		PermissionIDs: permissionIDs, RateLimitID: rateLimitID, ExpiresAt: key.ExpiresAt,
+		Permissions: permissions, RateLimitID: rateLimitID, ExpiresAt: key.ExpiresAt,
 		IsActive: key.IsActive, RevokedAt: key.RevokedAt, LastUsedAt: key.LastUsedAt,
 		CreatedBy: createdBy, CreatedAt: key.CreatedAt, UpdatedAt: key.UpdatedAt,
 	}
 }
 
+func toOptionResponses(options []APIKeyOption) []APIKeyOptionResponse {
+	responses := make([]APIKeyOptionResponse, 0, len(options))
+	for _, option := range options {
+		responses = append(responses, APIKeyOptionResponse{ID: option.ID.String(), Name: option.Name})
+	}
+	return responses
+}
+
 func handleDBError(c *fiber.Ctx, err error) error {
+	if errors.Is(err, ErrClientUnavailable) || errors.Is(err, ErrPermissionUnavailable) || errors.Is(err, ErrRateLimitUnavailable) {
+		return response.Error(c, fiber.StatusUnprocessableEntity, "invalid_reference", err.Error())
+	}
 	if apiErr, ok := dberror.MapDBError(err); ok {
 		return response.Error(c, apiErr.Status, apiErr.Code, apiErr.Message)
 	}

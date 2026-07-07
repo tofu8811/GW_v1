@@ -8,7 +8,9 @@ import (
 	adminCORSConfigs "gateway-api/internal/admin/corsconfigs"
 	adminInstances "gateway-api/internal/admin/instances"
 	adminIPBlacklist "gateway-api/internal/admin/ipblacklist"
+	adminPermissions "gateway-api/internal/admin/permissions"
 	adminRateLimits "gateway-api/internal/admin/ratelimits"
+	adminRoles "gateway-api/internal/admin/roles"
 	adminRoutes "gateway-api/internal/admin/routes"
 	adminServices "gateway-api/internal/admin/services"
 	configcache "gateway-api/internal/config/cache"
@@ -37,6 +39,8 @@ func RegisterAdminRoutes(app *fiber.App, db *pgxpool.Pool, redisClient *redis.Cl
 
 	adminCache.RegisterCacheRoutes(admin.Group("/cache"), cacheStore, notifier, redisClient)
 	adminAPIKeys.RegisterAPIKeyRoutes(admin.Group("/api-keys"), db)
+	adminRoles.RegisterRoleRoutes(admin.Group("/roles"), db)
+	adminPermissions.RegisterPermissionRoutes(admin.Group("/permissions"), db)
 	adminServices.RegisterServiceRoutes(admin.Group("/services"), db, notifier, cacheStore, healthStore)
 	adminInstances.RegisterServiceInstanceRoutes(admin.Group("/services"), db, notifier)
 	adminInstances.RegisterInstanceRoutes(admin.Group("/instances"), db, notifier, healthStore, healthChecker)

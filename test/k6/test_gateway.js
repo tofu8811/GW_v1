@@ -2,7 +2,7 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 // const BASE_URL = 'http://127.0.0.1:8080';
-const BASE_URL = 'http://host.docker.internal:8080';
+const BASE_URL = 'http://localhost:8080';
 const TOKEN = 'Bearer YOUR_TOKEN';
 
 export const options = {
@@ -33,8 +33,8 @@ export default function () {
 
   const responses = http.batch([
     ['GET', `${BASE_URL}/api/products`, null, { headers }],
-    ['GET', `${BASE_URL}/api/product/5`, null, { headers }],
-    ['GET', `${BASE_URL}/api/product/7`, null, { headers }],
+    ['GET', `${BASE_URL}/api/product/2`, null, { headers }],
+    ['GET', `${BASE_URL}/api/product/3`, null, { headers }],
 
   ]);
 
