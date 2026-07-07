@@ -13,6 +13,12 @@ import (
 
 var ErrAPIKeyNotFound = errors.New("API key not found")
 
+var (
+	ErrClientUnavailable     = errors.New("client does not exist or is inactive")
+	ErrPermissionUnavailable = errors.New("permission does not exist or is inactive")
+	ErrRateLimitUnavailable  = errors.New("rate limit policy does not exist or is inactive")
+)
+
 type Repository struct {
 	db *pgxpool.Pool
 }
@@ -27,6 +33,9 @@ func (r *Repository) Create(ctx context.Context, apiKey *APIKey) error {
 		return err
 	}
 	defer tx.Rollback(ctx)
+	if err := validateReferences(ctx, tx, apiKey); err != nil {
+		return err
+	}
 
 	err = tx.QueryRow(ctx, `
 		INSERT INTO api_keys (
@@ -41,6 +50,10 @@ func (r *Repository) Create(ctx context.Context, apiKey *APIKey) error {
 		return err
 	}
 	if err := replacePermissions(ctx, tx, apiKey.ID, apiKey.PermissionIDs); err != nil {
+		return err
+	}
+	apiKey.Permissions, err = findPermissionNames(ctx, tx, apiKey.PermissionIDs)
+	if err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -98,6 +111,9 @@ func (r *Repository) Update(ctx context.Context, apiKey *APIKey) error {
 		return err
 	}
 	defer tx.Rollback(ctx)
+	if err := validateReferences(ctx, tx, apiKey); err != nil {
+		return err
+	}
 
 	err = tx.QueryRow(ctx, `
 		UPDATE api_keys SET
@@ -114,6 +130,10 @@ func (r *Repository) Update(ctx context.Context, apiKey *APIKey) error {
 		return err
 	}
 	if err := replacePermissions(ctx, tx, apiKey.ID, apiKey.PermissionIDs); err != nil {
+		return err
+	}
+	apiKey.Permissions, err = findPermissionNames(ctx, tx, apiKey.PermissionIDs)
+	if err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -149,7 +169,7 @@ type apiKeyScanner interface {
 
 func scanAPIKey(row apiKeyScanner) (APIKey, error) {
 	var key APIKey
-	err := row.Scan(&key.ID, &key.KeyPrefix, &key.Label, &key.ClientID, &key.PermissionIDs,
+	err := row.Scan(&key.ID, &key.KeyPrefix, &key.Label, &key.ClientID, &key.PermissionIDs, &key.Permissions,
 		&key.RateLimitID, &key.ExpiresAt, &key.IsActive, &key.RevokedAt, &key.LastUsedAt,
 		&key.CreatedBy, &key.CreatedAt, &key.UpdatedAt)
 	return key, err
@@ -158,11 +178,13 @@ func scanAPIKey(row apiKeyScanner) (APIKey, error) {
 func selectAPIKeysQuery(whereClause string) string {
 	return `
 		SELECT ak.id, ak.key_prefix, ak.label, ak.client_id,
-		       COALESCE(array_agg(aks.permission_id) FILTER (WHERE aks.permission_id IS NOT NULL), '{}'::uuid[]) AS permission_ids,
+		       COALESCE(array_agg(p.id ORDER BY p.resource, p.action) FILTER (WHERE p.id IS NOT NULL), '{}'::uuid[]) AS permission_ids,
+		       COALESCE(array_agg(p.resource || ':' || p.action ORDER BY p.resource, p.action) FILTER (WHERE p.id IS NOT NULL), '{}'::text[]) AS permissions,
 		       ak.rate_limit_id, ak.expires_at, ak.is_active, ak.revoked_at, ak.last_used_at,
 		       ak.created_by, ak.created_at, ak.updated_at
 		FROM api_keys ak
 		LEFT JOIN api_key_scopes aks ON aks.api_key_id = ak.id
+		LEFT JOIN permissions p ON p.id = aks.permission_id AND p.deleted_at IS NULL AND p.is_active
 		` + whereClause + `
 		GROUP BY ak.id
 	`
@@ -182,4 +204,112 @@ func replacePermissions(ctx context.Context, tx pgx.Tx, apiKeyID uuid.UUID, perm
 		}
 	}
 	return nil
+}
+
+func (r *Repository) FindOptions(ctx context.Context) (*APIKeyOptions, error) {
+	clients, err := queryOptions(ctx, r.db, `
+		SELECT id, name
+		FROM clients
+		WHERE is_active AND deleted_at IS NULL
+		ORDER BY name
+	`)
+	if err != nil {
+		return nil, err
+	}
+	permissions, err := queryOptions(ctx, r.db, `
+		SELECT id, resource || ':' || action
+		FROM permissions
+		WHERE is_active AND deleted_at IS NULL
+		ORDER BY resource, action
+	`)
+	if err != nil {
+		return nil, err
+	}
+	rateLimits, err := queryOptions(ctx, r.db, `
+		SELECT id, name
+		FROM rate_limit_policies
+		WHERE is_active AND deleted_at IS NULL
+		ORDER BY name
+	`)
+	if err != nil {
+		return nil, err
+	}
+	return &APIKeyOptions{Clients: clients, Permissions: permissions, RateLimits: rateLimits}, nil
+}
+
+type optionQuerier interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+}
+
+func queryOptions(ctx context.Context, db optionQuerier, query string) ([]APIKeyOption, error) {
+	rows, err := db.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	options := make([]APIKeyOption, 0)
+	for rows.Next() {
+		var option APIKeyOption
+		if err := rows.Scan(&option.ID, &option.Name); err != nil {
+			return nil, err
+		}
+		options = append(options, option)
+	}
+	return options, rows.Err()
+}
+
+func validateReferences(ctx context.Context, tx pgx.Tx, apiKey *APIKey) error {
+	var exists bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (
+		SELECT 1 FROM clients WHERE id = $1 AND is_active AND deleted_at IS NULL
+	)`, apiKey.ClientID).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		return ErrClientUnavailable
+	}
+	if apiKey.RateLimitID != nil {
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (
+			SELECT 1 FROM rate_limit_policies WHERE id = $1 AND is_active AND deleted_at IS NULL
+		)`, *apiKey.RateLimitID).Scan(&exists); err != nil {
+			return err
+		}
+		if !exists {
+			return ErrRateLimitUnavailable
+		}
+	}
+	return nil
+}
+
+func findPermissionNames(ctx context.Context, tx pgx.Tx, permissionIDs []uuid.UUID) ([]string, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT id, resource || ':' || action
+		FROM permissions
+		WHERE id = ANY($1) AND is_active AND deleted_at IS NULL
+	`, permissionIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	namesByID := make(map[uuid.UUID]string, len(permissionIDs))
+	for rows.Next() {
+		var id uuid.UUID
+		var name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, err
+		}
+		namesByID[id] = name
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(permissionIDs))
+	for _, id := range permissionIDs {
+		name, ok := namesByID[id]
+		if !ok {
+			return nil, ErrPermissionUnavailable
+		}
+		names = append(names, name)
+	}
+	return names, nil
 }

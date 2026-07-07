@@ -13,6 +13,7 @@ type APIKey struct {
 	Label         *string
 	ClientID      uuid.UUID
 	PermissionIDs []uuid.UUID
+	Permissions   []string
 	RateLimitID   *uuid.UUID
 	ExpiresAt     *time.Time
 	IsActive      bool
@@ -21,4 +22,15 @@ type APIKey struct {
 	CreatedBy     *uuid.UUID
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+}
+
+type APIKeyOption struct {
+	ID   uuid.UUID
+	Name string
+}
+
+type APIKeyOptions struct {
+	Clients     []APIKeyOption
+	Permissions []APIKeyOption
+	RateLimits  []APIKeyOption
 }

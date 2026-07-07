@@ -10,6 +10,7 @@ func RegisterAPIKeyRoutes(router fiber.Router, db *pgxpool.Pool) {
 
 	router.Post("/", handler.Create)
 	router.Get("/", handler.FindAll)
+	router.Get("/options", handler.Options)
 	router.Get("/:id", handler.FindByID)
 	router.Put("/:id", handler.Update)
 	router.Post("/:id/revoke", handler.Revoke)
