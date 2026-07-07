@@ -41,6 +41,7 @@ All routes below use JWT and RBAC:
 - `GET /admin/metrics/latency`: requires `metrics:read`
 - `GET /admin/metrics/status-codes`: requires `metrics:read`
 - `GET /admin/metrics/top-routes`: requires `metrics:read`
+- `GET /admin/metrics/realtime/stream`: requires `metrics:read`
 
 Common metric query parameters:
 
@@ -74,12 +75,57 @@ limit
 
 ## Realtime dashboard
 
-The simplest frontend integration is polling:
+The dashboard uses Server-Sent Events for realtime updates:
 
-- Poll `/admin/metrics/summary?from=now-60s&to=now`
-- Poll `/admin/metrics/rps?from=now-60s&to=now&interval=1s`
-- Poll `/admin/metrics/error-rate?from=now-60s&to=now&interval=1s`
-- Poll `/admin/metrics/status-codes?from=now-60s&to=now`
+```text
+GET /admin/metrics/realtime/stream?window=60s&interval=1s&top_limit=10
+```
 
-Polling every 1-2 seconds is enough for a graduation-project dashboard and avoids adding WebSocket
-state management before it is necessary.
+Supported query parameters:
+
+```text
+window
+interval
+service_name
+route_id
+method
+status_class
+status_code
+client_ip
+top_limit
+```
+
+The service clamps expensive realtime queries:
+
+- `window`: default `60s`, min `10s`, max `15m`
+- `interval`: default `1s`, min `1s`, max `1m`
+- `top_limit`: default `10`, max `50`
+
+SSE events:
+
+```text
+event: metrics
+id: <generated_at>
+data: <DashboardSnapshot JSON>
+
+event: ping
+data: {}
+
+event: error
+data: {"code":"elasticsearch_unavailable","message":"metrics temporarily unavailable"}
+```
+
+The SSE snapshot is built from a single Elasticsearch aggregation query per tick. It includes:
+
+- summary: total requests, error count, error rate, avg/p50/p95/p99 latency
+- rps time series
+- error-rate time series
+- status class/code distribution
+- top routes by `normalized_path`
+
+Native browser `EventSource` cannot send an `Authorization` header. If the admin frontend keeps using
+Bearer tokens, use an EventSource polyfill that supports custom headers. Other options are HttpOnly
+auth cookies or a short-lived stream token.
+
+Kibana can still be used for debugging and internal observation, but the admin dashboard reads
+Elasticsearch through these backend routes.

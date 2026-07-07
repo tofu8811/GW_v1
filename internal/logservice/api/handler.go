@@ -22,6 +22,7 @@ type Store interface {
 	Latency(ctx context.Context, query model.LogQuery) (map[string]any, error)
 	StatusCodes(ctx context.Context, query model.LogQuery) (map[string]any, error)
 	TopRoutes(ctx context.Context, query model.LogQuery) ([]map[string]any, error)
+	DashboardSnapshot(ctx context.Context, query model.RealtimeQuery) (model.DashboardSnapshot, error)
 }
 
 type Handler struct {
@@ -48,6 +49,7 @@ func RegisterRoutes(app *fiber.App, handler *Handler, middlewares ...fiber.Handl
 	admin.Get("/metrics/latency", middleware.RequirePermission("metrics:read"), handler.Latency)
 	admin.Get("/metrics/status-codes", middleware.RequirePermission("metrics:read"), handler.StatusCodes)
 	admin.Get("/metrics/top-routes", middleware.RequirePermission("metrics:read"), handler.TopRoutes)
+	admin.Get("/metrics/realtime/stream", middleware.RequirePermission("metrics:read"), handler.RealtimeStream)
 }
 
 func (h *Handler) Health(c *fiber.Ctx) error {
