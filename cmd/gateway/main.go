@@ -9,6 +9,7 @@ import (
 	"gateway-api/config"
 	"gateway-api/infrastructure/logger"
 	"gateway-api/infrastructure/postgres"
+	"gateway-api/infrastructure/rabbitmq"
 	redisclient "gateway-api/infrastructure/redis"
 	"gateway-api/internal/admin"
 	"gateway-api/internal/auth"
@@ -38,6 +39,21 @@ func main() {
 		log.Fatal(err)
 	}
 	defer requestLogFile.Close()
+	requestLogSink := middleware.RequestLogSink(middleware.NewJSONLineSink(requestLogFile))
+	if cfg.RabbitMQURL != "" {
+		logPublisher, err := rabbitmq.NewLogPublisher(rabbitmq.LogPublisherConfig{
+			URL:        cfg.RabbitMQURL,
+			Exchange:   cfg.RabbitMQLogExchange,
+			RoutingKey: cfg.RabbitMQLogRoutingKey,
+			Timeout:    cfg.RabbitMQPublishTimeout,
+		}, logg)
+		if err != nil {
+			logg.Warn("failed to create rabbitmq log publisher, falling back to file logs", "error", err)
+		} else {
+			defer logPublisher.Close()
+			requestLogSink = middleware.NewMultiLogSink(logPublisher, middleware.NewJSONLineSink(requestLogFile))
+		}
+	}
 
 	db, err := postgres.NewPool(cfg.DatabaseURL)
 	if err != nil {
@@ -87,7 +103,7 @@ func main() {
 	upstreamHealthFilter := upstreamhealth.NewHealthFilter(upstreamHealthStore, breakers)
 
 	healthHandler := health.NewHandler(db, rdb, cacheStore.Ready)
-	srv := server.New(logg, healthHandler, requestLogFile)
+	srv := server.New(logg, healthHandler, requestLogSink, cfg.AppEnv, cfg.GatewayNode)
 	ipBlacklistChecker := ipblacklist.NewChecker(db, rdb, logg)
 	if err := ipBlacklistChecker.Reload(ctx); err != nil {
 		logg.Error("failed to warm ip blacklist cache", "error", err)

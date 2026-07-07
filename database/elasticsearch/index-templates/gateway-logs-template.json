@@ -1,23 +1,88 @@
 {
-  "index_patterns": ["gateway-logs-*"],
+  "index_patterns": [
+    "gateway-logs-*"
+  ],
   "template": {
     "mappings": {
       "properties": {
-        "@timestamp": { "type": "date" },
-        "trace_id": { "type": "keyword" },
-        "route_id": { "type": "keyword" },
-        "service_name": { "type": "keyword" },
-        "method": { "type": "keyword" },
-        "path": { "type": "keyword" },
-        "client_ip": { "type": "ip" },
-        "user_id": { "type": "keyword" },
-        "api_key_id": { "type": "keyword" },
-        "status_code": { "type": "short" },
-        "response_time_ms": { "type": "float" },
-        "upstream_latency_ms": { "type": "float" },
-        "request_size": { "type": "long" },
-        "response_size": { "type": "long" },
-        "error_message": { "type": "text" }
+        "@timestamp": {
+          "type": "date"
+        },
+        "trace_id": {
+          "type": "keyword"
+        },
+        "route_id": {
+          "type": "keyword"
+        },
+        "service_id": {
+          "type": "keyword"
+        },
+        "service_name": {
+          "type": "keyword"
+        },
+        "instance_id": {
+          "type": "keyword"
+        },
+        "method": {
+          "type": "keyword"
+        },
+        "path": {
+          "type": "keyword"
+        },
+        "normalized_path": {
+          "type": "keyword"
+        },
+        "query_params": {
+          "type": "flattened"
+        },
+        "client_ip": {
+          "type": "ip"
+        },
+        "user_id": {
+          "type": "keyword"
+        },
+        "api_key_id": {
+          "type": "keyword"
+        },
+        "status_code": {
+          "type": "short"
+        },
+        "status_class": {
+          "type": "keyword"
+        },
+        "is_error": {
+          "type": "boolean"
+        },
+        "response_time_ms": {
+          "type": "float"
+        },
+        "gateway_latency_ms": {
+          "type": "float"
+        },
+        "upstream_latency_ms": {
+          "type": "float"
+        },
+        "request_size": {
+          "type": "long"
+        },
+        "response_size": {
+          "type": "long"
+        },
+        "error_message": {
+          "type": "text"
+        },
+        "error_type": {
+          "type": "keyword"
+        },
+        "user_agent": {
+          "type": "text"
+        },
+        "env": {
+          "type": "keyword"
+        },
+        "gateway_node": {
+          "type": "keyword"
+        }
       }
     }
   }

@@ -36,19 +36,11 @@ export default function () {
     ['GET', `${BASE_URL}/api/product/2`, null, { headers }],
     ['GET', `${BASE_URL}/api/product/3`, null, { headers }],
 
-    // Order service routes
-    // ['GET', `${BASE_URL}/api/orders`, null, { headers }],
-    // ['GET', `${BASE_URL}/api/order/1`, null, { headers }],
-    // ['POST', `${BASE_URL}/api/order/create`, createOrderPayload, { headers }],
   ]);
 
   check(responses[0], { '[gateway] GET products 200': (r) => r.status === 200 });
   check(responses[1], { '[gateway] GET product/5 200': (r) => r.status === 200 });
   check(responses[2], { '[gateway] GET product/7 200': (r) => r.status === 200 });
-
-  // check(responses[3], { '[gateway] GET orders 200': (r) => r.status === 200 });
-  // check(responses[4], { '[gateway] GET order/1 200': (r) => r.status === 200 });
-  // check(responses[5], { '[gateway] POST order/create 201/200': (r) => r.status === 201 || r.status === 200 });
 
   sleep(1);
 }
