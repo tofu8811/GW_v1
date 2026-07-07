@@ -85,7 +85,7 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 		defer setActualCORSHeaders(c, route.CORS, origin)
 	}
 
-	appmiddleware.SetRouteLogContext(c, route.RouteID, route.ServiceName)
+	appmiddleware.SetRouteLogContext(c, route.RouteID, route.ServiceID, route.ServiceName, route.RoutePath)
 	if route.AuthRequired {
 		if h.authenticator == nil {
 			h.logger.Error("route requires authentication but no authenticator is configured", "route_id", route.RouteID)

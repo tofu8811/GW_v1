@@ -47,6 +47,7 @@ func (h *Handler) forwardWithRetry(c *fiber.Ctx, route *UpstreamRoute, requestPa
 
 		selected := routeForInstance(route, inst)
 		targetURL := buildTargetURL(&selected, requestPath, params, string(c.Request().URI().QueryString()))
+		appmiddleware.SetInstanceLogContext(c, inst.ID)
 
 		h.logger.Info("proxying request to upstream instance",
 			"request_id", c.GetRespHeader(fiber.HeaderXRequestID),
