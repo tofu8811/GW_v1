@@ -66,6 +66,13 @@ var constraintErrors = map[string]APIError{
 	"api_keys_user_id_fkey":       {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "user_id does not exist"},
 	"api_keys_rate_limit_id_fkey": {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "rate_limit_id does not exist"},
 
+	// clients
+	"clients_name_active_unique": {Status: http.StatusConflict, Code: "conflict", Message: "client name already exists"},
+	"clients_owner_user_id_fkey": {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "owner_user_id does not exist"},
+	"clients_client_type_check":  {Status: http.StatusBadRequest, Code: "bad_request", Message: "client_type is invalid"},
+	"api_keys_client_id_fkey":    {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "client_id does not exist"},
+	"api_keys_created_by_fkey":   {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "created_by user does not exist"},
+
 	// ip_blacklist
 	"ip_blacklist_ip_or_cidr_unique":        {Status: http.StatusConflict, Code: "conflict", Message: "IP or CIDR already exists in blacklist"},
 	"ip_blacklist_ip_or_cidr_active_unique": {Status: http.StatusConflict, Code: "conflict", Message: "IP or CIDR already exists in blacklist"},
