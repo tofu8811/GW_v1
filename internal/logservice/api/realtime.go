@@ -39,6 +39,11 @@ func (h *Handler) RealtimeStream(c *fiber.Ctx) error {
 	c.Set(fiber.HeaderConnection, "keep-alive") // giữ kết nối
 	c.Set("X-Accel-Buffering", "no")
 
+	requestCtx := c.UserContext()
+	if requestCtx == nil {
+		requestCtx = context.Background()
+	}
+
 	// giữ connection + stream
 	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
 		ticker := time.NewTicker(durationFromQuery(query.Interval, defaultRealtimeInterval))
@@ -48,7 +53,7 @@ func (h *Handler) RealtimeStream(c *fiber.Ctx) error {
 		defer pingTicker.Stop()
 
 		sendMetrics := func() bool {
-			ctx, cancel := context.WithTimeout(c.UserContext(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(requestCtx, 5*time.Second)
 			defer cancel()
 
 			snapshot, err := h.store.DashboardSnapshot(ctx, query)
@@ -67,6 +72,8 @@ func (h *Handler) RealtimeStream(c *fiber.Ctx) error {
 
 		for {
 			select {
+			case <-requestCtx.Done():
+				return
 			case <-ticker.C: // gửi event
 				if !sendMetrics() {
 					return

@@ -74,7 +74,15 @@ func main() {
 	app := fiber.New(fiber.Config{AppName: "Gateway Log Service"})
 	app.Use(requestid.New())
 	app.Use(recover.New())
-	app.Use(cors.New())
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:  "http://localhost:5173,http://127.0.0.1:5173",
+		AllowMethods:  fiber.MethodGet + "," + fiber.MethodPost + "," + fiber.MethodPut + "," + fiber.MethodPatch + "," + fiber.MethodDelete + "," + fiber.MethodOptions,
+		AllowHeaders:  "Origin,Content-Type,Accept,Authorization,Cache-Control",
+		ExposeHeaders: "Content-Type,Cache-Control,Connection",
+	}))
+	app.Options("/*", func(c *fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusNoContent)
+	})
 
 	api.RegisterRoutes(app, api.NewHandler(esClient), middleware.JWTAuth(cfg.JWTSecret, rdb, db))
 

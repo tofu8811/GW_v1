@@ -2,12 +2,12 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 // const BASE_URL = 'http://127.0.0.1:8080';
-const BASE_URL = 'http://localhost:8080';
-const TOKEN = 'Bearer YOUR_TOKEN';
+const BASE_URL = __ENV.BASE_URL || 'http://host.docker.internal:8080'; const TOKEN = 'Bearer YOUR_TOKEN';
 
 export const options = {
   stages: [
     { duration: '10s', target: 20 },
+    { duration: '10s', target: 5 },
     { duration: '10s', target: 0 },
   ],
 };
