@@ -253,11 +253,12 @@ type apiKeyScanner interface {
 
 func scanAPIKey(row apiKeyScanner) (APIKey, error) {
 	var key APIKey
+	var scopeServiceIDs []uuid.UUID
 	var scopeCodes []string
 	var scopeResources []string
 	var scopeActions []string
 	err := row.Scan(&key.ID, &key.KeyPrefix, &key.Label, &key.ClientID, &key.ScopeIDs,
-		&scopeCodes, &scopeResources, &scopeActions,
+		&scopeServiceIDs, &scopeCodes, &scopeResources, &scopeActions,
 		&key.RateLimitID, &key.ExpiresAt, &key.IsActive, &key.RevokedAt, &key.LastUsedAt,
 		&key.CreatedBy, &key.CreatedAt, &key.UpdatedAt)
 	if err != nil {
@@ -266,6 +267,9 @@ func scanAPIKey(row apiKeyScanner) (APIKey, error) {
 	key.Scopes = make([]APIScope, 0, len(key.ScopeIDs))
 	for index, scopeID := range key.ScopeIDs {
 		scope := APIScope{ID: scopeID}
+		if index < len(scopeServiceIDs) {
+			scope.ServiceID = scopeServiceIDs[index]
+		}
 		if index < len(scopeCodes) {
 			scope.Code = scopeCodes[index]
 		}
@@ -284,6 +288,7 @@ func selectAPIKeysQuery(whereClause string) string {
 	return `
 		SELECT ak.id, ak.key_prefix, ak.label, ak.client_id,
 		       COALESCE(array_agg(asc_.id ORDER BY asc_.resource, asc_.action) FILTER (WHERE asc_.id IS NOT NULL), '{}'::uuid[]) AS scope_ids,
+		       COALESCE(array_agg(asc_.service_id ORDER BY asc_.resource, asc_.action) FILTER (WHERE asc_.id IS NOT NULL), '{}'::uuid[]) AS scope_service_ids,
 		       COALESCE(array_agg(asc_.code ORDER BY asc_.resource, asc_.action) FILTER (WHERE asc_.id IS NOT NULL), '{}'::text[]) AS scope_codes,
 		       COALESCE(array_agg(asc_.resource ORDER BY asc_.resource, asc_.action) FILTER (WHERE asc_.id IS NOT NULL), '{}'::text[]) AS scope_resources,
 		       COALESCE(array_agg(asc_.action ORDER BY asc_.resource, asc_.action) FILTER (WHERE asc_.id IS NOT NULL), '{}'::text[]) AS scope_actions,
@@ -341,7 +346,7 @@ func replaceScopes(ctx context.Context, tx pgx.Tx, apiKeyID uuid.UUID, scopeIDs 
 
 func findAPIKeyScopes(ctx context.Context, tx pgx.Tx, apiKeyID uuid.UUID) ([]uuid.UUID, []APIScope, error) {
 	rows, err := tx.Query(ctx, `
-		SELECT asc_.id, asc_.code, asc_.resource, asc_.action
+		SELECT asc_.id, asc_.service_id, asc_.code, asc_.resource, asc_.action
 		FROM api_key_scopes aks
 		JOIN api_scopes asc_ ON asc_.id = aks.scope_id
 		WHERE aks.api_key_id = $1 AND asc_.is_active AND asc_.deleted_at IS NULL
@@ -429,7 +434,7 @@ func queryOptions(ctx context.Context, db optionQuerier, query string) ([]APIKey
 
 func queryScopeOptions(ctx context.Context, db optionQuerier) ([]APIScope, error) {
 	rows, err := db.Query(ctx, `
-		SELECT id, code, resource, action
+		SELECT id, service_id, code, resource, action
 		FROM api_scopes
 		WHERE is_active AND deleted_at IS NULL
 		ORDER BY resource, action
@@ -474,7 +479,7 @@ func validateReferences(ctx context.Context, tx pgx.Tx, apiKey *APIKey) error {
 
 func findScopeDetails(ctx context.Context, tx pgx.Tx, scopeIDs []uuid.UUID) ([]APIScope, error) {
 	rows, err := tx.Query(ctx, `
-		SELECT id, code, resource, action
+		SELECT id, service_id, code, resource, action
 		FROM api_scopes
 		WHERE id = ANY($1) AND is_active AND deleted_at IS NULL
 	`, scopeIDs)
