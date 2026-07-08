@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	CurrentSchemaVersion = 2
+	CurrentSchemaVersion = 3
 
 	KeyVersion     = "cfg:version"
 	KeyReload      = "cfg:reload"
@@ -32,19 +32,20 @@ func DefaultConfig() Config {
 }
 
 type RouteValue struct {
-	SchemaVersion int                   `json:"schema_version"`
-	RouteID       string                `json:"route_id"`
-	Path          string                `json:"path"`
-	Method        string                `json:"method"`
-	StripPrefix   bool                  `json:"strip_prefix"`
-	RewriteTarget *string               `json:"rewrite_target"`
-	AuthRequired  bool                  `json:"auth_required"`
-	RateLimitID   *string               `json:"rate_limit_id"`
-	RateLimit     *RateLimitPolicyValue `json:"rate_limit,omitempty"`
-	CORS          *CORSValue            `json:"cors,omitempty"`
-	Priority      int                   `json:"priority"`
-	Service       ServiceValue          `json:"service"`
-	Instances     []InstanceValue       `json:"instances"`
+	SchemaVersion   int                   `json:"schema_version"`
+	RouteID         string                `json:"route_id"`
+	Path            string                `json:"path"`
+	Method          string                `json:"method"`
+	StripPrefix     bool                  `json:"strip_prefix"`
+	RewriteTarget   *string               `json:"rewrite_target"`
+	AuthRequired    bool                  `json:"auth_required"`
+	RequiredScopeID *string               `json:"required_scope_id"`
+	RateLimitID     *string               `json:"rate_limit_id"`
+	RateLimit       *RateLimitPolicyValue `json:"rate_limit,omitempty"`
+	CORS            *CORSValue            `json:"cors,omitempty"`
+	Priority        int                   `json:"priority"`
+	Service         ServiceValue          `json:"service"`
+	Instances       []InstanceValue       `json:"instances"`
 }
 
 type CORSValue struct {

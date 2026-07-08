@@ -13,6 +13,11 @@ import (
 
 var ErrRouteNotFound = errors.New("route not found")
 
+var (
+	ErrRequiredScopeUnavailable     = errors.New("required_scope_id does not exist or is inactive")
+	ErrRequiredScopeServiceMismatch = errors.New("required_scope_id must belong to the same service as the route")
+)
+
 type Repository struct {
 	db *pgxpool.Pool
 }
@@ -22,12 +27,15 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 }
 
 func (r *Repository) Create(ctx context.Context, route *Route) error {
+	if err := r.validateRequiredScope(ctx, route.ServiceID, route.RequiredScopeID); err != nil {
+		return err
+	}
 	query := `
 		INSERT INTO routes (
 			id, path, method, service_id, strip_prefix, rewrite_target,
-			auth_required, rate_limit_id, priority, is_active
+			auth_required, required_scope_id, rate_limit_id, priority, is_active
 		)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 		RETURNING created_at, updated_at
 	`
 
@@ -41,6 +49,7 @@ func (r *Repository) Create(ctx context.Context, route *Route) error {
 		route.StripPrefix,
 		route.RewriteTarget,
 		route.AuthRequired,
+		route.RequiredScopeID,
 		route.RateLimitID,
 		route.Priority,
 		route.IsActive,
@@ -50,7 +59,7 @@ func (r *Repository) Create(ctx context.Context, route *Route) error {
 func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Route, error) {
 	query := `
 		SELECT id, path, method, service_id, strip_prefix, rewrite_target,
-		       auth_required, rate_limit_id, priority, is_active, created_at, updated_at
+		       auth_required, required_scope_id, rate_limit_id, priority, is_active, created_at, updated_at
 		FROM routes
 		WHERE deleted_at IS NULL
 		ORDER BY priority DESC, created_at DESC
@@ -76,6 +85,7 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Ro
 			&route.StripPrefix,
 			&route.RewriteTarget,
 			&route.AuthRequired,
+			&route.RequiredScopeID,
 			&route.RateLimitID,
 			&route.Priority,
 			&route.IsActive,
@@ -101,7 +111,7 @@ func (r *Repository) Count(ctx context.Context) (int64, error) {
 func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*Route, error) {
 	query := `
 		SELECT id, path, method, service_id, strip_prefix, rewrite_target,
-		       auth_required, rate_limit_id, priority, is_active, created_at, updated_at
+		       auth_required, required_scope_id, rate_limit_id, priority, is_active, created_at, updated_at
 		FROM routes
 		WHERE id = $1 AND deleted_at IS NULL
 	`
@@ -116,6 +126,7 @@ func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*Route, error)
 		&route.StripPrefix,
 		&route.RewriteTarget,
 		&route.AuthRequired,
+		&route.RequiredScopeID,
 		&route.RateLimitID,
 		&route.Priority,
 		&route.IsActive,
@@ -135,6 +146,9 @@ func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*Route, error)
 }
 
 func (r *Repository) Update(ctx context.Context, route *Route) error {
+	if err := r.validateRequiredScope(ctx, route.ServiceID, route.RequiredScopeID); err != nil {
+		return err
+	}
 	query := `
 		UPDATE routes
 		SET path = $2,
@@ -143,9 +157,10 @@ func (r *Repository) Update(ctx context.Context, route *Route) error {
 		    strip_prefix = $5,
 		    rewrite_target = $6,
 		    auth_required = $7,
-		    rate_limit_id = $8,
-		    priority = $9,
-		    is_active = $10
+		    required_scope_id = $8,
+		    rate_limit_id = $9,
+		    priority = $10,
+		    is_active = $11
 		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING updated_at
 	`
@@ -160,6 +175,7 @@ func (r *Repository) Update(ctx context.Context, route *Route) error {
 		route.StripPrefix,
 		route.RewriteTarget,
 		route.AuthRequired,
+		route.RequiredScopeID,
 		route.RateLimitID,
 		route.Priority,
 		route.IsActive,
@@ -182,5 +198,28 @@ func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
 		return ErrRouteNotFound
 	}
 
+	return nil
+}
+
+func (r *Repository) validateRequiredScope(ctx context.Context, serviceID uuid.UUID, requiredScopeID *uuid.UUID) error {
+	if requiredScopeID == nil {
+		return nil
+	}
+
+	var scopeServiceID uuid.UUID
+	err := r.db.QueryRow(ctx, `
+		SELECT service_id
+		FROM api_scopes
+		WHERE id = $1 AND is_active AND deleted_at IS NULL
+	`, *requiredScopeID).Scan(&scopeServiceID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrRequiredScopeUnavailable
+	}
+	if err != nil {
+		return err
+	}
+	if scopeServiceID != serviceID {
+		return ErrRequiredScopeServiceMismatch
+	}
 	return nil
 }

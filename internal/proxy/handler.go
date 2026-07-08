@@ -32,7 +32,7 @@ type Handler struct {
 }
 
 type RouteAuthenticator interface {
-	Authenticate(c *fiber.Ctx, routeID string, method string, routePath string) error
+	Authenticate(c *fiber.Ctx, requiredScopeID *string) error
 }
 
 func NewHandler(configCache *configcache.Store, logger *slog.Logger, healthFilter *upstreamhealth.HealthFilter, breakers *breaker.Registry, rateLimiter *RateLimiter, authenticator RouteAuthenticator) *Handler {
@@ -91,7 +91,7 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 			h.logger.Error("route requires authentication but no authenticator is configured", "route_id", route.RouteID)
 			return response.InternalServerError(c)
 		}
-		if err := h.authenticator.Authenticate(c, route.RouteID, route.RouteMethod, route.RoutePath); err != nil {
+		if err := h.authenticator.Authenticate(c, route.RequiredScopeID); err != nil {
 			return err
 		}
 		if c.Response().StatusCode() >= fiber.StatusBadRequest {
@@ -159,6 +159,7 @@ func upstreamRoutesFromCache(route configcache.RouteValue) []UpstreamRoute {
 			RoutePath:             route.Path,
 			RouteMethod:           route.Method,
 			AuthRequired:          route.AuthRequired,
+			RequiredScopeID:       route.RequiredScopeID,
 			StripPrefix:           route.StripPrefix,
 			RewriteTarget:         route.RewriteTarget,
 			RateLimit:             route.RateLimit,

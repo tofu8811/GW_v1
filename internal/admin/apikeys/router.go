@@ -1,6 +1,8 @@
 package apikeys
 
 import (
+	"gateway-api/internal/middleware"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -8,11 +10,11 @@ import (
 func RegisterAPIKeyRoutes(router fiber.Router, db *pgxpool.Pool) {
 	handler := NewHandler(NewRepository(db))
 
-	router.Post("/", handler.Create)
-	router.Get("/", handler.FindAll)
-	router.Get("/options", handler.Options)
-	router.Get("/:id", handler.FindByID)
-	router.Put("/:id", handler.Update)
-	router.Post("/:id/revoke", handler.Revoke)
-	router.Post("/:id/rotate", handler.Rotate)
+	router.Post("/", middleware.RequirePermission("api_keys:write"), handler.Create)
+	router.Get("/", middleware.RequirePermission("api_keys:read"), handler.FindAll)
+	router.Get("/options", middleware.RequirePermission("api_keys:read"), handler.Options)
+	router.Get("/:id", middleware.RequirePermission("api_keys:read"), handler.FindByID)
+	router.Put("/:id", middleware.RequirePermission("api_keys:write"), handler.Update)
+	router.Post("/:id/revoke", middleware.RequirePermission("api_keys:write"), handler.Revoke)
+	router.Post("/:id/rotate", middleware.RequirePermission("api_keys:write"), handler.Rotate)
 }

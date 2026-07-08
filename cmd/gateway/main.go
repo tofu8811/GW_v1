@@ -51,7 +51,7 @@ func main() {
 			logg.Warn("failed to create rabbitmq log publisher, falling back to file logs", "error", err)
 		} else {
 			defer logPublisher.Close()
-			requestLogSink = middleware.NewMultiLogSink(logPublisher, middleware.NewJSONLineSink(requestLogFile))
+			requestLogSink = logPublisher
 		}
 	}
 

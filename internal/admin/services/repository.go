@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"gateway-api/helper/pagination"
 
@@ -21,7 +22,13 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) Create(ctx context.Context, service *Service) error {
+func (r *Repository) Create(ctx context.Context, service *Service, scopeResource *string) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
 	query := `
 		INSERT INTO services (
 			id, name, description, protocol, lb_strategy, health_path,
@@ -31,7 +38,7 @@ func (r *Repository) Create(ctx context.Context, service *Service) error {
 		RETURNING created_at, updated_at
 	`
 
-	return r.db.QueryRow(
+	err = tx.QueryRow(
 		ctx,
 		query,
 		service.ID,
@@ -45,6 +52,15 @@ func (r *Repository) Create(ctx context.Context, service *Service) error {
 		service.CircuitBreakerEnabled,
 		service.IsActive,
 	).Scan(&service.CreatedAt, &service.UpdatedAt)
+	if err != nil {
+		return err
+	}
+	if scopeResource != nil {
+		if err := createDefaultAPIScopes(ctx, tx, service.ID, *scopeResource); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Service, error) {
@@ -182,5 +198,27 @@ func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
 		return ErrServiceNotFound
 	}
 
+	return nil
+}
+
+func createDefaultAPIScopes(ctx context.Context, tx pgx.Tx, serviceID uuid.UUID, resource string) error {
+	for _, action := range []string{"read", "write"} {
+		code := fmt.Sprintf("%s:%s", resource, action)
+		description := fmt.Sprintf("%s access for %s", action, resource)
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO api_scopes (service_id, code, resource, action, description)
+			SELECT $1, $2, $3, $4, $5
+			WHERE NOT EXISTS (
+				SELECT 1
+				FROM api_scopes
+				WHERE service_id = $1
+				  AND resource = $3
+				  AND action = $4
+				  AND deleted_at IS NULL
+			)
+		`, serviceID, code, resource, action, description); err != nil {
+			return err
+		}
+	}
 	return nil
 }

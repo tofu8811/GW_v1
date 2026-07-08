@@ -65,6 +65,15 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 
 	healthPath := normalizeHealthPath(req.HealthPath)
 
+	var scopeResource *string
+	if boolValue(req.AutoCreateScopes, false) {
+		resource, err := normalizeScopeResource(req.ScopeResource)
+		if err != nil {
+			return response.BadRequest(c, err.Error())
+		}
+		scopeResource = &resource
+	}
+
 	timeoutMS := intValue(req.TimeoutMS, defaultTimeoutMS)
 	if err := validation.ValidateIntGreaterThan("timeout_ms", timeoutMS, 0); err != nil {
 		return response.BadRequest(c, err.Error())
@@ -93,7 +102,7 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		IsActive:              boolValue(req.IsActive, true),
 	}
 
-	if err := h.repository.Create(c.Context(), &service); err != nil {
+	if err := h.repository.Create(c.Context(), &service, scopeResource); err != nil {
 		return handleDBError(c, err)
 	}
 	if err := h.notifyChange(c, "services"); err != nil {
@@ -297,6 +306,17 @@ func normalizeLBStrategy(strategy string) (string, error) {
 		return "", err
 	}
 
+	return normalized, nil
+}
+
+func normalizeScopeResource(value *string) (string, error) {
+	if value == nil {
+		return "", validation.FieldError{Field: "scope_resource", Message: "scope_resource is required when auto_create_scopes is true"}
+	}
+	normalized := strings.ToLower(strings.TrimSpace(*value))
+	if normalized == "" {
+		return "", validation.FieldError{Field: "scope_resource", Message: "scope_resource is required when auto_create_scopes is true"}
+	}
 	return normalized, nil
 }
 

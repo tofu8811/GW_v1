@@ -2,6 +2,7 @@ package apikeys
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 )
 
 const apiKeyPrefix = "gw_live_"
+const maxAPIKeyGenerationAttempts = 5
 
 type Handler struct {
 	repository *Repository
@@ -37,7 +39,7 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	if err != nil {
 		return response.BadRequest(c, err.Error())
 	}
-	permissionIDs, err := parsePermissionIDs(req.PermissionIDs)
+	scopeIDs, err := parseScopeIDs(req.ScopeIDs)
 	if err != nil {
 		return response.BadRequest(c, err.Error())
 	}
@@ -49,36 +51,42 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		return response.BadRequest(c, "expires_at must be in the future")
 	}
 
-	id, err := idgen.NewUUID()
-	if err != nil {
-		return response.InternalServerError(c)
-	}
-	secret, err := cryptoutil.GenerateRandomToken()
-	if err != nil {
-		return response.InternalServerError(c)
-	}
-	rawKey := apiKeyPrefix + secret
-	keyHash, err := cryptoutil.HashAPIKey(rawKey)
-	if err != nil {
-		return response.InternalServerError(c)
-	}
 	createdBy := currentUserID(c)
 
-	key := APIKey{
-		ID: id, KeyHash: keyHash, KeyPrefix: rawKey[:12], Label: normalizedOptionalString(req.Label),
-		ClientID: clientID, PermissionIDs: permissionIDs, RateLimitID: rateLimitID,
-		ExpiresAt: req.ExpiresAt, IsActive: boolValue(req.IsActive, true), CreatedBy: createdBy,
-	}
-	if err := h.repository.Create(c.Context(), &key); err != nil {
-		return handleDBError(c, err)
+	for attempt := 0; attempt < maxAPIKeyGenerationAttempts; attempt++ {
+		id, err := idgen.NewUUID()
+		if err != nil {
+			return response.InternalServerError(c)
+		}
+		rawKey, keyHash, keyPrefix, err := generateAPIKeyMaterial()
+		if err != nil {
+			return response.InternalServerError(c)
+		}
+		key := APIKey{
+			ID: id, KeyHash: keyHash, KeyPrefix: keyPrefix, Label: normalizedOptionalString(req.Label),
+			ClientID: clientID, ScopeIDs: scopeIDs, RateLimitID: rateLimitID,
+			ExpiresAt: req.ExpiresAt, IsActive: boolValue(req.IsActive, true), CreatedBy: createdBy,
+		}
+		if err := h.repository.Create(c.Context(), &key); err != nil {
+			if errors.Is(err, ErrAPIKeyHashExists) {
+				continue
+			}
+			return handleDBError(c, err)
+		}
+
+		return response.Created(c, CreatedAPIKeyResponse{APIKeyResponse: toResponse(key), Key: rawKey})
 	}
 
-	return response.Created(c, CreatedAPIKeyResponse{APIKeyResponse: toResponse(key), Key: rawKey})
+	return response.Error(c, fiber.StatusConflict, "conflict", "could not generate a unique API key")
 }
 
 func (h *Handler) FindAll(c *fiber.Ctx) error {
 	p := pagination.FromQuery(c)
-	keys, err := h.repository.FindAll(c.Context(), p)
+	filters, err := parseListFilters(c)
+	if err != nil {
+		return response.BadRequest(c, err.Error())
+	}
+	keys, err := h.repository.FindAll(c.Context(), p, filters)
 	if err != nil {
 		return response.InternalServerError(c)
 	}
@@ -86,7 +94,7 @@ func (h *Handler) FindAll(c *fiber.Ctx) error {
 	for _, key := range keys {
 		items = append(items, toResponse(key))
 	}
-	total, err := h.repository.Count(c.Context())
+	total, err := h.repository.Count(c.Context(), filters)
 	if err != nil {
 		return response.InternalServerError(c)
 	}
@@ -99,9 +107,9 @@ func (h *Handler) Options(c *fiber.Ctx) error {
 		return response.InternalServerError(c)
 	}
 	return response.OK(c, APIKeyOptionsResponse{
-		Clients:     toOptionResponses(options.Clients),
-		Permissions: toOptionResponses(options.Permissions),
-		RateLimits:  toOptionResponses(options.RateLimits),
+		Clients:    toOptionResponses(options.Clients),
+		Scopes:     toScopeOptionResponses(options.Scopes),
+		RateLimits: toOptionResponses(options.RateLimits),
 	})
 }
 
@@ -146,8 +154,8 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 			return response.BadRequest(c, err.Error())
 		}
 	}
-	if req.PermissionIDs != nil {
-		key.PermissionIDs, err = parsePermissionIDs(*req.PermissionIDs)
+	if req.ScopeIDs != nil {
+		key.ScopeIDs, err = parseScopeIDs(*req.ScopeIDs)
 		if err != nil {
 			return response.BadRequest(c, err.Error())
 		}
@@ -157,12 +165,6 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 		if err != nil {
 			return response.BadRequest(c, err.Error())
 		}
-	}
-	if req.ExpiresAt != nil {
-		if !req.ExpiresAt.After(time.Now()) {
-			return response.BadRequest(c, "expires_at must be in the future")
-		}
-		key.ExpiresAt = req.ExpiresAt
 	}
 	if req.IsActive != nil {
 		key.IsActive = *req.IsActive
@@ -194,27 +196,70 @@ func (h *Handler) Rotate(c *fiber.Ctx) error {
 		return response.BadRequest(c, err.Error())
 	}
 
-	secret, err := cryptoutil.GenerateRandomToken()
-	if err != nil {
-		return response.InternalServerError(c)
-	}
-	rawKey := apiKeyPrefix + secret
-	keyHash, err := cryptoutil.HashAPIKey(rawKey)
-	if err != nil {
-		return response.InternalServerError(c)
+	createdBy := currentUserID(c)
+	for attempt := 0; attempt < maxAPIKeyGenerationAttempts; attempt++ {
+		newID, err := idgen.NewUUID()
+		if err != nil {
+			return response.InternalServerError(c)
+		}
+		rawKey, keyHash, keyPrefix, err := generateAPIKeyMaterial()
+		if err != nil {
+			return response.InternalServerError(c)
+		}
+
+		key, err := h.repository.Rotate(c.Context(), id, newID, keyHash, keyPrefix, createdBy)
+		if errors.Is(err, ErrAPIKeyNotFound) {
+			return response.NotFound(c, "API key not found")
+		}
+		if errors.Is(err, ErrAPIKeyHashExists) {
+			continue
+		}
+		if err != nil {
+			return handleDBError(c, err)
+		}
+
+		return response.OK(c, CreatedAPIKeyResponse{APIKeyResponse: toResponse(*key), Key: rawKey})
 	}
 
-	key, err := h.repository.Rotate(c.Context(), id, keyHash, rawKey[:12])
-	if errors.Is(err, ErrAPIKeyNotFound) {
-		return response.NotFound(c, "API key not found")
-	} else if err != nil {
-		return handleDBError(c, err)
-	}
-
-	return response.OK(c, CreatedAPIKeyResponse{APIKeyResponse: toResponse(*key), Key: rawKey})
+	return response.Error(c, fiber.StatusConflict, "conflict", "could not generate a unique API key")
 }
 
-func parsePermissionIDs(values []string) ([]uuid.UUID, error) {
+func generateAPIKeyMaterial() (rawKey string, keyHash string, keyPrefix string, err error) {
+	secret, err := cryptoutil.GenerateRandomToken()
+	if err != nil {
+		return "", "", "", err
+	}
+	rawKey = apiKeyPrefix + secret
+	keyHash, err = cryptoutil.HashAPIKey(rawKey)
+	if err != nil {
+		return "", "", "", err
+	}
+	return rawKey, keyHash, rawKey[:12], nil
+}
+
+func parseListFilters(c *fiber.Ctx) (APIKeyListFilters, error) {
+	var filters APIKeyListFilters
+	if rawClientID := strings.TrimSpace(c.Query("client_id")); rawClientID != "" {
+		clientID, err := validation.ParseRequiredUUID("client_id", rawClientID)
+		if err != nil {
+			return filters, err
+		}
+		filters.ClientID = &clientID
+	}
+	if rawIsActive := strings.TrimSpace(c.Query("is_active")); rawIsActive != "" {
+		isActive, err := strconv.ParseBool(rawIsActive)
+		if err != nil {
+			return filters, validation.FieldError{Field: "is_active", Message: "must be true or false"}
+		}
+		filters.IsActive = &isActive
+	}
+	filters.IncludeRevoked = c.QueryBool("include_revoked", false)
+	filters.IncludeDeleted = c.QueryBool("include_deleted", false)
+	filters.DeletedOnly = c.QueryBool("deleted_only", false)
+	return filters, nil
+}
+
+func parseScopeIDs(values []string) ([]uuid.UUID, error) {
 	unique := make(map[uuid.UUID]struct{}, len(values))
 	result := make([]uuid.UUID, 0, len(values))
 	for _, value := range values {
@@ -224,7 +269,7 @@ func parsePermissionIDs(values []string) ([]uuid.UUID, error) {
 		}
 		id, err := uuid.Parse(normalized)
 		if err != nil {
-			return nil, validation.FieldError{Field: "permission_ids", Message: "contains invalid permission id"}
+			return nil, validation.FieldError{Field: "scope_ids", Message: "contains invalid scope id"}
 		}
 		if _, exists := unique[id]; exists {
 			continue
@@ -233,7 +278,7 @@ func parsePermissionIDs(values []string) ([]uuid.UUID, error) {
 		result = append(result, id)
 	}
 	if len(result) == 0 {
-		return nil, validation.FieldError{Field: "permission_ids", Message: "at least one permission is required"}
+		return nil, validation.FieldError{Field: "scope_ids", Message: "at least one scope is required"}
 	}
 	return result, nil
 }
@@ -279,17 +324,15 @@ func toResponse(key APIKey) APIKeyResponse {
 		value := key.CreatedBy.String()
 		createdBy = &value
 	}
-	permissions := make([]APIKeyPermissionResponse, 0, len(key.PermissionIDs))
-	for index, permissionID := range key.PermissionIDs {
-		name := ""
-		if index < len(key.Permissions) {
-			name = key.Permissions[index]
-		}
-		permissions = append(permissions, APIKeyPermissionResponse{ID: permissionID.String(), Name: name})
+	scopes := make([]APIKeyScopeResponse, 0, len(key.Scopes))
+	for _, scope := range key.Scopes {
+		scopes = append(scopes, APIKeyScopeResponse{
+			ID: scope.ID.String(), Code: scope.Code, Resource: scope.Resource, Action: scope.Action,
+		})
 	}
 	return APIKeyResponse{
 		ID: key.ID.String(), KeyPrefix: key.KeyPrefix, Label: key.Label, ClientID: key.ClientID.String(),
-		Permissions: permissions, RateLimitID: rateLimitID, ExpiresAt: key.ExpiresAt,
+		Scopes: scopes, RateLimitID: rateLimitID, ExpiresAt: key.ExpiresAt,
 		IsActive: key.IsActive, RevokedAt: key.RevokedAt, LastUsedAt: key.LastUsedAt,
 		CreatedBy: createdBy, CreatedAt: key.CreatedAt, UpdatedAt: key.UpdatedAt,
 	}
@@ -303,8 +346,18 @@ func toOptionResponses(options []APIKeyOption) []APIKeyOptionResponse {
 	return responses
 }
 
+func toScopeOptionResponses(scopes []APIScope) []APIKeyScopeOptionResponse {
+	responses := make([]APIKeyScopeOptionResponse, 0, len(scopes))
+	for _, scope := range scopes {
+		responses = append(responses, APIKeyScopeOptionResponse{
+			ID: scope.ID.String(), Code: scope.Code, Resource: scope.Resource, Action: scope.Action,
+		})
+	}
+	return responses
+}
+
 func handleDBError(c *fiber.Ctx, err error) error {
-	if errors.Is(err, ErrClientUnavailable) || errors.Is(err, ErrPermissionUnavailable) || errors.Is(err, ErrRateLimitUnavailable) {
+	if errors.Is(err, ErrClientUnavailable) || errors.Is(err, ErrScopeUnavailable) || errors.Is(err, ErrRateLimitUnavailable) {
 		return response.Error(c, fiber.StatusUnprocessableEntity, "invalid_reference", err.Error())
 	}
 	if apiErr, ok := dberror.MapDBError(err); ok {

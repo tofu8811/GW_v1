@@ -42,9 +42,10 @@ var constraintErrors = map[string]APIError{
 	"rate_limit_policies_name_unique": {Status: http.StatusConflict, Code: "conflict", Message: "rate limit policy name already exists"},
 
 	// routes
-	"routes_path_method_unique": {Status: http.StatusConflict, Code: "conflict", Message: "route path and method already exists"},
-	"routes_service_id_fkey":    {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "service_id does not exist"},
-	"routes_rate_limit_id_fkey": {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "rate_limit_id does not exist"},
+	"routes_path_method_unique":     {Status: http.StatusConflict, Code: "conflict", Message: "route path and method already exists"},
+	"routes_service_id_fkey":        {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "service_id does not exist"},
+	"routes_rate_limit_id_fkey":     {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "rate_limit_id does not exist"},
+	"routes_required_scope_id_fkey": {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "required_scope_id does not exist"},
 
 	// cors_configs
 	"cors_configs_route_id_unique": {Status: http.StatusConflict, Code: "conflict", Message: "route already has CORS config"},
@@ -62,9 +63,10 @@ var constraintErrors = map[string]APIError{
 	"users_role_id_fkey":    {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "role_id does not exist"},
 
 	// api_keys
-	"api_keys_key_hash_unique":    {Status: http.StatusConflict, Code: "conflict", Message: "API key already exists"},
-	"api_keys_user_id_fkey":       {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "user_id does not exist"},
-	"api_keys_rate_limit_id_fkey": {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "rate_limit_id does not exist"},
+	"api_keys_key_hash_unique":        {Status: http.StatusConflict, Code: "conflict", Message: "API key already exists"},
+	"api_keys_key_hash_active_unique": {Status: http.StatusConflict, Code: "conflict", Message: "API key already exists"},
+	"api_keys_user_id_fkey":           {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "user_id does not exist"},
+	"api_keys_rate_limit_id_fkey":     {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "rate_limit_id does not exist"},
 
 	// clients
 	"clients_name_active_unique": {Status: http.StatusConflict, Code: "conflict", Message: "client name already exists"},
@@ -72,6 +74,13 @@ var constraintErrors = map[string]APIError{
 	"clients_client_type_check":  {Status: http.StatusBadRequest, Code: "bad_request", Message: "client_type is invalid"},
 	"api_keys_client_id_fkey":    {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "client_id does not exist"},
 	"api_keys_created_by_fkey":   {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "created_by user does not exist"},
+
+	// api_scopes
+	"api_scopes_service_id_fkey":                       {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "service_id does not exist"},
+	"api_scopes_action_check":                          {Status: http.StatusBadRequest, Code: "bad_request", Message: "api scope action is invalid"},
+	"api_scopes_code_active_unique":                    {Status: http.StatusConflict, Code: "conflict", Message: "api scope code already exists"},
+	"api_scopes_service_resource_action_active_unique": {Status: http.StatusConflict, Code: "conflict", Message: "api scope already exists for service/resource/action"},
+	"api_key_scopes_scope_id_fkey":                     {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "scope_id does not exist"},
 
 	// ip_blacklist
 	"ip_blacklist_ip_or_cidr_unique":        {Status: http.StatusConflict, Code: "conflict", Message: "IP or CIDR already exists in blacklist"},

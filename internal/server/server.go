@@ -20,7 +20,8 @@ type Server struct {
 
 func New(logger *slog.Logger, healthHandler *health.Handler, requestLogSink appmiddleware.RequestLogSink, appEnv string, gatewayNode string) *Server {
 	app := fiber.New(fiber.Config{
-		AppName: "API Gateway",
+		AppName:               "API Gateway",
+		DisableStartupMessage: false,
 	})
 
 	app.Use(requestid.New())

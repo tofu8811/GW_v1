@@ -6,14 +6,15 @@ import (
 )
 
 type UpstreamRoute struct {
-	RouteID       string
-	RoutePath     string
-	RouteMethod   string
-	AuthRequired  bool
-	StripPrefix   bool
-	RewriteTarget *string
-	RateLimit     *configcache.RateLimitPolicyValue
-	CORS          *configcache.CORSValue
+	RouteID         string
+	RoutePath       string
+	RouteMethod     string
+	AuthRequired    bool
+	RequiredScopeID *string
+	StripPrefix     bool
+	RewriteTarget   *string
+	RateLimit       *configcache.RateLimitPolicyValue
+	CORS            *configcache.CORSValue
 
 	ServiceID   string
 	ServiceName string

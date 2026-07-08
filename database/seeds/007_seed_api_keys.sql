@@ -25,17 +25,6 @@ ON CONFLICT (id) DO UPDATE SET
     owner_user_id = EXCLUDED.owner_user_id,
     is_active = EXCLUDED.is_active;
 
-INSERT INTO permissions (id, resource, action)
-VALUES
-    ('01972f6a-0003-7000-8000-000000000001', '/api/orders', 'GET'),
-    ('01972f6a-0003-7000-8000-000000000002', '/api/order/create', 'POST'),
-    ('01972f6a-0003-7000-8000-000000000003', '/api/order/{id}', 'GET')
-ON CONFLICT (id) DO UPDATE SET
-    resource = EXCLUDED.resource,
-    action = EXCLUDED.action,
-    is_active = TRUE,
-    deleted_at = NULL;
-
 INSERT INTO api_keys (
     id,
     key_hash,
@@ -71,11 +60,10 @@ ON CONFLICT (id) DO UPDATE SET
     deleted_at = NULL,
     created_by = EXCLUDED.created_by;
 
-INSERT INTO api_key_scopes (api_key_id, permission_id)
+INSERT INTO api_key_scopes (api_key_id, scope_id)
 VALUES
-    ('a0000000-0000-0000-0000-000000000001', '01972f6a-0003-7000-8000-000000000001'),
-    ('a0000000-0000-0000-0000-000000000001', '01972f6a-0003-7000-8000-000000000002'),
-    ('a0000000-0000-0000-0000-000000000001', '01972f6a-0003-7000-8000-000000000003')
+    ('a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000201'),
+    ('a0000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000202')
 ON CONFLICT DO NOTHING;
 
 COMMIT;
