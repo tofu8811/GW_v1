@@ -186,8 +186,8 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 		route.AuthRequired = *req.AuthRequired
 	}
 
-	if req.RequiredScopeID != nil {
-		requiredScopeID, err := validation.ParseOptionalUUID("required_scope_id", req.RequiredScopeID)
+	if req.RequiredScopeID.Set {
+		requiredScopeID, err := validation.ParseOptionalUUID("required_scope_id", req.RequiredScopeID.Value)
 		if err != nil {
 			return response.BadRequest(c, err.Error())
 		}
