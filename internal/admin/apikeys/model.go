@@ -25,10 +25,11 @@ type APIKey struct {
 }
 
 type APIScope struct {
-	ID       uuid.UUID
-	Code     string
-	Resource string
-	Action   string
+	ID        uuid.UUID
+	ServiceID uuid.UUID
+	Code      string
+	Resource  string
+	Action    string
 }
 
 type APIKeyOption struct {

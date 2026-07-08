@@ -327,7 +327,7 @@ func toResponse(key APIKey) APIKeyResponse {
 	scopes := make([]APIKeyScopeResponse, 0, len(key.Scopes))
 	for _, scope := range key.Scopes {
 		scopes = append(scopes, APIKeyScopeResponse{
-			ID: scope.ID.String(), Code: scope.Code, Resource: scope.Resource, Action: scope.Action,
+			ID: scope.ID.String(), ServiceID: scope.ServiceID.String(), Code: scope.Code, Resource: scope.Resource, Action: scope.Action,
 		})
 	}
 	return APIKeyResponse{
@@ -350,7 +350,7 @@ func toScopeOptionResponses(scopes []APIScope) []APIKeyScopeOptionResponse {
 	responses := make([]APIKeyScopeOptionResponse, 0, len(scopes))
 	for _, scope := range scopes {
 		responses = append(responses, APIKeyScopeOptionResponse{
-			ID: scope.ID.String(), Code: scope.Code, Resource: scope.Resource, Action: scope.Action,
+			ID: scope.ID.String(), ServiceID: scope.ServiceID.String(), Code: scope.Code, Resource: scope.Resource, Action: scope.Action,
 		})
 	}
 	return responses

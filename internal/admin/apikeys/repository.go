@@ -356,7 +356,7 @@ func findAPIKeyScopes(ctx context.Context, tx pgx.Tx, apiKeyID uuid.UUID) ([]uui
 	scopes := make([]APIScope, 0)
 	for rows.Next() {
 		var scope APIScope
-		if err := rows.Scan(&scope.ID, &scope.Code, &scope.Resource, &scope.Action); err != nil {
+		if err := rows.Scan(&scope.ID, &scope.ServiceID, &scope.Code, &scope.Resource, &scope.Action); err != nil {
 			return nil, nil, err
 		}
 		scopeIDs = append(scopeIDs, scope.ID)
@@ -441,7 +441,7 @@ func queryScopeOptions(ctx context.Context, db optionQuerier) ([]APIScope, error
 	scopes := make([]APIScope, 0)
 	for rows.Next() {
 		var scope APIScope
-		if err := rows.Scan(&scope.ID, &scope.Code, &scope.Resource, &scope.Action); err != nil {
+		if err := rows.Scan(&scope.ID, &scope.ServiceID, &scope.Code, &scope.Resource, &scope.Action); err != nil {
 			return nil, err
 		}
 		scopes = append(scopes, scope)
@@ -485,7 +485,7 @@ func findScopeDetails(ctx context.Context, tx pgx.Tx, scopeIDs []uuid.UUID) ([]A
 	scopesByID := make(map[uuid.UUID]APIScope, len(scopeIDs))
 	for rows.Next() {
 		var scope APIScope
-		if err := rows.Scan(&scope.ID, &scope.Code, &scope.Resource, &scope.Action); err != nil {
+		if err := rows.Scan(&scope.ID, &scope.ServiceID, &scope.Code, &scope.Resource, &scope.Action); err != nil {
 			return nil, err
 		}
 		scopesByID[scope.ID] = scope

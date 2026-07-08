@@ -36,10 +36,11 @@ type APIKeyResponse struct {
 }
 
 type APIKeyScopeResponse struct {
-	ID       string `json:"id"`
-	Code     string `json:"code"`
-	Resource string `json:"resource"`
-	Action   string `json:"action"`
+	ID        string `json:"id"`
+	ServiceID string `json:"service_id"`
+	Code      string `json:"code"`
+	Resource  string `json:"resource"`
+	Action    string `json:"action"`
 }
 
 type APIKeyOptionResponse struct {
@@ -48,10 +49,11 @@ type APIKeyOptionResponse struct {
 }
 
 type APIKeyScopeOptionResponse struct {
-	ID       string `json:"id"`
-	Code     string `json:"code"`
-	Resource string `json:"resource"`
-	Action   string `json:"action"`
+	ID        string `json:"id"`
+	ServiceID string `json:"service_id"`
+	Code      string `json:"code"`
+	Resource  string `json:"resource"`
+	Action    string `json:"action"`
 }
 
 type APIKeyOptionsResponse struct {
