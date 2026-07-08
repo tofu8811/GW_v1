@@ -7,8 +7,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func RegisterAPIKeyRoutes(router fiber.Router, db *pgxpool.Pool) {
-	handler := NewHandler(NewRepository(db))
+func RegisterAPIKeyRoutes(router fiber.Router, db *pgxpool.Pool, notifier ConfigNotifier) {
+	handler := NewHandler(NewRepository(db), notifier)
 
 	router.Post("/", middleware.RequirePermission("api_keys:write"), handler.Create)
 	router.Get("/", middleware.RequirePermission("api_keys:read"), handler.FindAll)

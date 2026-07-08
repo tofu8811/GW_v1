@@ -41,7 +41,7 @@ func RegisterAdminRoutes(app *fiber.App, db *pgxpool.Pool, redisClient *redis.Cl
 
 	adminCache.RegisterCacheRoutes(admin.Group("/cache"), cacheStore, notifier, redisClient)
 	adminClients.RegisterClientRoutes(admin.Group("/clients"), db, notifier)
-	adminAPIKeys.RegisterAPIKeyRoutes(admin.Group("/api-keys"), db)
+	adminAPIKeys.RegisterAPIKeyRoutes(admin.Group("/api-keys"), db, notifier)
 	adminRoles.RegisterRoleRoutes(admin.Group("/roles"), db)
 	adminPermissions.RegisterPermissionRoutes(admin.Group("/permissions"), db)
 	adminUsers.RegisterUserRoutes(admin.Group("/users"), db)

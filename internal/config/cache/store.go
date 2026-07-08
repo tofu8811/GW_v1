@@ -26,13 +26,14 @@ type Store struct {
 	logger *slog.Logger
 	config Config
 
-	mu           sync.RWMutex
-	routes       []RouteValue
-	routesByKey  map[string]RouteValue
-	pipelines    map[string][]PipelineValue
-	pluginMeta   map[string]PluginMetaValue
-	localVersion int64
-	ready        bool
+	mu            sync.RWMutex
+	routes        []RouteValue
+	routesByKey   map[string]RouteValue
+	apiKeysByHash map[string]APIKeyValue
+	pipelines     map[string][]PipelineValue
+	pluginMeta    map[string]PluginMetaValue
+	localVersion  int64
+	ready         bool
 }
 
 func NewStore(db *pgxpool.Pool, redisClient *redis.Client, logger *slog.Logger, config Config) *Store {
@@ -50,13 +51,14 @@ func NewStore(db *pgxpool.Pool, redisClient *redis.Client, logger *slog.Logger, 
 	}
 
 	return &Store{
-		db:          db,
-		redis:       redisClient,
-		logger:      logger,
-		config:      config,
-		routesByKey: map[string]RouteValue{},
-		pipelines:   map[string][]PipelineValue{},
-		pluginMeta:  map[string]PluginMetaValue{},
+		db:            db,
+		redis:         redisClient,
+		logger:        logger,
+		config:        config,
+		routesByKey:   map[string]RouteValue{},
+		apiKeysByHash: map[string]APIKeyValue{},
+		pipelines:     map[string][]PipelineValue{},
+		pluginMeta:    map[string]PluginMetaValue{},
 	}
 }
 
@@ -123,6 +125,17 @@ func (s *Store) FindCandidates(method string) []RouteValue {
 	return routes
 }
 
+func (s *Store) FindAPIKeyByHash(hash string) (APIKeyValue, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	apiKey, ok := s.apiKeysByHash[hash]
+	if !ok {
+		return APIKeyValue{}, false
+	}
+
+	return cloneAPIKey(apiKey), true
+}
 func (s *Store) Pipeline(routeID string) []PipelineValue {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -288,12 +301,18 @@ func (s *Store) readSnapshot(ctx context.Context) (snapshot, error) {
 		return snapshot{}, err
 	}
 
+	apiKeys, err := readAPIKeys(ctx, tx, s.config.SchemaVersion)
+	if err != nil {
+		return snapshot{}, err
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return snapshot{}, err
 	}
 
 	return snapshot{
 		Routes:     routes,
+		APIKeys:    apiKeys,
 		Pipelines:  pipelines,
 		PluginMeta: pluginMeta,
 	}, nil
@@ -423,6 +442,60 @@ func readRoutes(ctx context.Context, tx pgx.Tx, schemaVersion int) ([]RouteValue
 
 	return routes, rows.Err()
 }
+
+func readAPIKeys(ctx context.Context, tx pgx.Tx, schemaVersion int) ([]APIKeyValue, error) {
+	rows, err := tx.Query(ctx, `
+		SELECT
+			ak.id::text,
+			ak.key_hash,
+			ak.key_prefix,
+			ak.client_id::text,
+			c.owner_user_id::text,
+			COALESCE(array_agg(asc_.id::text ORDER BY asc_.resource, asc_.action) FILTER (WHERE asc_.id IS NOT NULL), '{}'::text[]) AS scope_ids,
+			ak.rate_limit_id::text,
+			ak.expires_at,
+			ak.is_active,
+			ak.revoked_at,
+			c.is_active
+		FROM api_keys ak
+		JOIN clients c ON c.id = ak.client_id
+		LEFT JOIN api_key_scopes aks ON aks.api_key_id = ak.id
+		LEFT JOIN api_scopes asc_ ON asc_.id = aks.scope_id AND asc_.deleted_at IS NULL AND asc_.is_active
+		WHERE ak.deleted_at IS NULL
+		  AND c.deleted_at IS NULL
+		GROUP BY ak.id, c.id
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	apiKeys := []APIKeyValue{}
+	for rows.Next() {
+		var apiKey APIKeyValue
+		err := rows.Scan(
+			&apiKey.ID,
+			&apiKey.KeyHash,
+			&apiKey.KeyPrefix,
+			&apiKey.ClientID,
+			&apiKey.OwnerUserID,
+			&apiKey.ScopeIDs,
+			&apiKey.RateLimitID,
+			&apiKey.ExpiresAt,
+			&apiKey.IsActive,
+			&apiKey.RevokedAt,
+			&apiKey.ClientActive,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		apiKey.SchemaVersion = schemaVersion
+		apiKeys = append(apiKeys, apiKey)
+	}
+
+	return apiKeys, rows.Err()
+}
 func readPlugins(ctx context.Context, tx pgx.Tx, schemaVersion int) (map[string][]PipelineValue, map[string]PluginMetaValue, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT
@@ -496,7 +569,7 @@ func (s *Store) writeSnapshot(ctx context.Context, snap snapshot) error {
 	// MULTI/EXEC keeps each route JSON, plugins, and pipeline visible as one config generation.
 	pipe := s.redis.TxPipeline()
 
-	staleKeys, err := s.scanConfigKeys(ctx, "cfg:route:*", "cfg:pipeline:*", "cfg:plugins:*", "cfg:plugin:*")
+	staleKeys, err := s.scanConfigKeys(ctx, "cfg:route:*", "cfg:apikey:*", "cfg:pipeline:*", "cfg:plugins:*", "cfg:plugin:*")
 	if err != nil {
 		return err
 	}
@@ -526,6 +599,11 @@ func (s *Store) writeSnapshot(ctx context.Context, snap snapshot) error {
 		}
 	}
 
+	for _, apiKey := range snap.APIKeys {
+		if err := setJSON(ctx, pipe, fmt.Sprintf("cfg:apikey:%s", apiKey.KeyHash), apiKey, s.config.ConfigTTL); err != nil {
+			return err
+		}
+	}
 	for _, meta := range snap.PluginMeta {
 		if err := setJSON(ctx, pipe, fmt.Sprintf("cfg:plugin:%s", meta.Code), meta, s.config.ConfigTTL); err != nil {
 			return err
@@ -570,6 +648,26 @@ func (s *Store) loadFromRedis(ctx context.Context) error {
 		snap.Pipelines[route.RouteID] = pipelineValue.Items
 	}
 
+	apiKeyKeys, err := s.scanConfigKeys(ctx, "cfg:apikey:*")
+	if err != nil {
+		return err
+	}
+	for _, key := range apiKeyKeys {
+		value, err := s.redis.Get(ctx, key).Bytes()
+		if err != nil {
+			return err
+		}
+
+		var apiKey APIKeyValue
+		if err := json.Unmarshal(value, &apiKey); err != nil {
+			return err
+		}
+		if apiKey.SchemaVersion != s.config.SchemaVersion {
+			return s.RebuildAll(ctx)
+		}
+
+		snap.APIKeys = append(snap.APIKeys, apiKey)
+	}
 	sortRoutes(snap.Routes)
 
 	version, err := s.redis.Get(ctx, KeyVersion).Int64()
@@ -630,11 +728,16 @@ func (s *Store) applySnapshot(snap snapshot) {
 		routesByKey[routeKey(route.Method, route.Path)] = route
 	}
 
+	apiKeysByHash := map[string]APIKeyValue{}
+	for _, apiKey := range snap.APIKeys {
+		apiKeysByHash[apiKey.KeyHash] = apiKey
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.routes = snap.Routes
 	s.routesByKey = routesByKey
+	s.apiKeysByHash = apiKeysByHash
 	s.pipelines = snap.Pipelines
 	s.pluginMeta = snap.PluginMeta
 	s.localVersion = snap.Version
@@ -719,6 +822,13 @@ func cloneRoute(route RouteValue) *RouteValue {
 	return &cloned
 }
 
+func cloneAPIKey(apiKey APIKeyValue) APIKeyValue {
+	cloned := apiKey
+	if apiKey.ScopeIDs != nil {
+		cloned.ScopeIDs = append([]string(nil), apiKey.ScopeIDs...)
+	}
+	return cloned
+}
 func ParseDurationSeconds(value string, fallback time.Duration) time.Duration {
 	seconds, err := strconv.Atoi(value)
 	if err != nil || seconds < 0 {

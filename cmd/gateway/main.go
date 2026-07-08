@@ -114,7 +114,7 @@ func main() {
 	jwtAuth := middleware.JWTAuth(cfg.JWTSecret, rdb, db)
 	admin.RegisterAdminRoutes(srv.App, db, rdb, cacheStore, configNotifier, upstreamHealthStore, upstreamChecker, ipBlacklistChecker, jwtAuth)
 
-	apiKeyAuth := middleware.NewAPIKeyAuth(db, rdb, cfg.JWTSecret)
+	apiKeyAuth := middleware.NewAPIKeyAuth(db, cacheStore)
 	proxy.RegisterGatewayRoutes(srv.App, cacheStore, rdb, logg, upstreamHealthFilter, breakers, apiKeyAuth, ipBlacklistChecker)
 
 	if err := srv.Run(cfg.AppPort); err != nil {

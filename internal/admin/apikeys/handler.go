@@ -1,6 +1,7 @@
 package apikeys
 
 import (
+	"context"
 	"errors"
 	"strconv"
 	"strings"
@@ -23,10 +24,15 @@ const maxAPIKeyGenerationAttempts = 5
 
 type Handler struct {
 	repository *Repository
+	notifier   ConfigNotifier
 }
 
-func NewHandler(repository *Repository) *Handler {
-	return &Handler{repository: repository}
+type ConfigNotifier interface {
+	NotifyChange(ctx context.Context, group string) error
+}
+
+func NewHandler(repository *Repository, notifier ConfigNotifier) *Handler {
+	return &Handler{repository: repository, notifier: notifier}
 }
 
 func (h *Handler) Create(c *fiber.Ctx) error {
@@ -72,6 +78,9 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 				continue
 			}
 			return handleDBError(c, err)
+		}
+		if err := h.notifyChange(c, "api_keys"); err != nil {
+			return response.InternalServerError(c)
 		}
 
 		return response.Created(c, CreatedAPIKeyResponse{APIKeyResponse: toResponse(key), Key: rawKey})
@@ -173,6 +182,9 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 	if err := h.repository.Update(c.Context(), key); err != nil {
 		return handleDBError(c, err)
 	}
+	if err := h.notifyChange(c, "api_keys"); err != nil {
+		return response.InternalServerError(c)
+	}
 	return response.OK(c, toResponse(*key))
 }
 
@@ -186,6 +198,9 @@ func (h *Handler) Revoke(c *fiber.Ctx) error {
 		return response.NotFound(c, "API key not found")
 	} else if err != nil {
 		return handleDBError(c, err)
+	}
+	if err := h.notifyChange(c, "api_keys"); err != nil {
+		return response.InternalServerError(c)
 	}
 	return response.OK(c, toResponse(*key))
 }
@@ -217,6 +232,9 @@ func (h *Handler) Rotate(c *fiber.Ctx) error {
 		if err != nil {
 			return handleDBError(c, err)
 		}
+		if err := h.notifyChange(c, "api_keys"); err != nil {
+			return response.InternalServerError(c)
+		}
 
 		return response.OK(c, CreatedAPIKeyResponse{APIKeyResponse: toResponse(*key), Key: rawKey})
 	}
@@ -224,6 +242,12 @@ func (h *Handler) Rotate(c *fiber.Ctx) error {
 	return response.Error(c, fiber.StatusConflict, "conflict", "could not generate a unique API key")
 }
 
+func (h *Handler) notifyChange(c *fiber.Ctx, group string) error {
+	if h.notifier == nil {
+		return nil
+	}
+	return h.notifier.NotifyChange(c.Context(), group)
+}
 func generateAPIKeyMaterial() (rawKey string, keyHash string, keyPrefix string, err error) {
 	secret, err := cryptoutil.GenerateRandomToken()
 	if err != nil {

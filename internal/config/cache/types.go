@@ -64,6 +64,20 @@ type RateLimitPolicyValue struct {
 	WindowSeconds int    `json:"window_seconds"`
 }
 
+type APIKeyValue struct {
+	SchemaVersion int        `json:"schema_version"`
+	ID            string     `json:"id"`
+	KeyHash       string     `json:"key_hash"`
+	KeyPrefix     string     `json:"key_prefix"`
+	ClientID      string     `json:"client_id"`
+	OwnerUserID   *string    `json:"owner_user_id"`
+	ScopeIDs      []string   `json:"scope_ids"`
+	RateLimitID   *string    `json:"rate_limit_id"`
+	ExpiresAt     *time.Time `json:"expires_at"`
+	IsActive      bool       `json:"is_active"`
+	RevokedAt     *time.Time `json:"revoked_at"`
+	ClientActive  bool       `json:"client_active"`
+}
 type ServiceValue struct {
 	ID                    string `json:"id"`
 	Name                  string `json:"name"`
@@ -120,6 +134,7 @@ type PipelineValue struct {
 
 type snapshot struct {
 	Routes     []RouteValue
+	APIKeys    []APIKeyValue
 	Pipelines  map[string][]PipelineValue
 	PluginMeta map[string]PluginMetaValue
 	Version    int64
