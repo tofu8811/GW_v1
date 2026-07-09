@@ -56,6 +56,10 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 		return h.handleCORSPreflight(c, requestPath)
 	}
 
+	if aggregation, ok := h.configCache.FindAggregation(method, requestPath); ok {
+		return h.handleAggregation(c, aggregation)
+	}
+
 	route, params, err := h.findRoute(c.Context(), requestPath, method)
 	if errors.Is(err, ErrRouteNotFound) {
 		h.logger.Warn("gateway route not found",
@@ -118,11 +122,20 @@ func (h *Handler) findRoute(ctx context.Context, path string, method string) (*U
 
 	for i := range candidates {
 		params, ok := matchPath(candidates[i].Path, path)
-		if !ok || len(candidates[i].Instances) == 0 {
+		if !ok {
 			continue
 		}
 
-		matched := upstreamRoutesFromCache(candidates[i])
+		service, ok := h.configCache.FindService(candidates[i].ServiceID)
+		if !ok {
+			continue
+		}
+		serviceInstances := h.configCache.FindInstancesByServiceID(candidates[i].ServiceID)
+		if len(serviceInstances) == 0 {
+			continue
+		}
+
+		matched := upstreamRoutesFromCache(candidates[i], service, serviceInstances)
 		instances := make([]loadbalancer.Instance, 0, len(matched))
 		for _, route := range matched {
 			instances = append(instances, loadbalancer.Instance{
@@ -151,9 +164,9 @@ func (h *Handler) findRoute(ctx context.Context, path string, method string) (*U
 	return nil, nil, ErrRouteNotFound
 }
 
-func upstreamRoutesFromCache(route configcache.RouteValue) []UpstreamRoute {
-	routes := make([]UpstreamRoute, 0, len(route.Instances))
-	for _, instance := range route.Instances {
+func upstreamRoutesFromCache(route configcache.RouteValue, service configcache.ServiceValue, instances []configcache.InstanceValue) []UpstreamRoute {
+	routes := make([]UpstreamRoute, 0, len(instances))
+	for _, instance := range instances {
 		routes = append(routes, UpstreamRoute{
 			RouteID:               route.RouteID,
 			RoutePath:             route.Path,
@@ -164,17 +177,17 @@ func upstreamRoutesFromCache(route configcache.RouteValue) []UpstreamRoute {
 			RewriteTarget:         route.RewriteTarget,
 			RateLimit:             route.RateLimit,
 			CORS:                  route.CORS,
-			ServiceID:             route.Service.ID,
-			ServiceName:           route.Service.Name,
-			Protocol:              route.Service.Protocol,
-			LBStrategy:            route.Service.LBStrategy,
+			ServiceID:             route.ServiceID,
+			ServiceName:           service.Name,
+			Protocol:              service.Protocol,
+			LBStrategy:            service.LBStrategy,
 			InstanceID:            instance.ID,
 			Host:                  instance.Host,
 			Port:                  instance.Port,
 			Weight:                instance.Weight,
-			TimeoutMS:             route.Service.TimeoutMS,
-			RetryCount:            route.Service.RetryCount,
-			CircuitBreakerEnabled: route.Service.CircuitBreakerEnabled,
+			TimeoutMS:             service.TimeoutMS,
+			RetryCount:            service.RetryCount,
+			CircuitBreakerEnabled: service.CircuitBreakerEnabled,
 		})
 	}
 	return routes

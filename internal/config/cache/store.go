@@ -2,14 +2,8 @@ package cache
 
 import (
 	"context"
-	"database/sql"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
-	"sort"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -26,14 +20,17 @@ type Store struct {
 	logger *slog.Logger
 	config Config
 
-	mu            sync.RWMutex
-	routes        []RouteValue
-	routesByKey   map[string]RouteValue
-	apiKeysByHash map[string]APIKeyValue
-	pipelines     map[string][]PipelineValue
-	pluginMeta    map[string]PluginMetaValue
-	localVersion  int64
-	ready         bool
+	mu                   sync.RWMutex
+	routes               []RouteValue
+	routesByKey          map[string]RouteValue
+	servicesByID         map[string]ServiceValue
+	instancesByServiceID map[string][]InstanceValue
+	apiKeysByHash        map[string]APIKeyValue
+	aggregationsByKey    map[string]AggregationValue
+	pipelines            map[string][]PipelineValue
+	pluginMeta           map[string]PluginMetaValue
+	localVersion         int64
+	ready                bool
 }
 
 func NewStore(db *pgxpool.Pool, redisClient *redis.Client, logger *slog.Logger, config Config) *Store {
@@ -51,14 +48,17 @@ func NewStore(db *pgxpool.Pool, redisClient *redis.Client, logger *slog.Logger, 
 	}
 
 	return &Store{
-		db:            db,
-		redis:         redisClient,
-		logger:        logger,
-		config:        config,
-		routesByKey:   map[string]RouteValue{},
-		apiKeysByHash: map[string]APIKeyValue{},
-		pipelines:     map[string][]PipelineValue{},
-		pluginMeta:    map[string]PluginMetaValue{},
+		db:                   db,
+		redis:                redisClient,
+		logger:               logger,
+		config:               config,
+		routesByKey:          map[string]RouteValue{},
+		servicesByID:         map[string]ServiceValue{},
+		instancesByServiceID: map[string][]InstanceValue{},
+		apiKeysByHash:        map[string]APIKeyValue{},
+		aggregationsByKey:    map[string]AggregationValue{},
+		pipelines:            map[string][]PipelineValue{},
+		pluginMeta:           map[string]PluginMetaValue{},
 	}
 }
 
@@ -82,142 +82,6 @@ func (s *Store) WarmAll(ctx context.Context) error {
 
 func (s *Store) RebuildRoute(ctx context.Context, routeID string) error {
 	return s.RebuildAll(ctx)
-}
-
-func (s *Store) GetRouteFromCache(ctx context.Context, method string, path string) (*RouteValue, error) {
-	key := routeKey(method, path)
-	value, err := s.redis.Get(ctx, key).Bytes()
-	if err == nil {
-		var route RouteValue
-		if jsonErr := json.Unmarshal(value, &route); jsonErr == nil && route.SchemaVersion == s.config.SchemaVersion {
-			s.rememberRoute(route)
-			return &route, nil
-		}
-		// Unknown schemas are ignored so the control plane can rebuild a compatible value.
-		_ = s.RebuildAll(ctx)
-	}
-	if err != nil && !errors.Is(err, redis.Nil) {
-		s.logger.Warn("redis route cache read failed; using local config", "key", key, "error", err)
-	}
-
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	route, ok := s.routesByKey[key]
-	if !ok {
-		return nil, ErrRouteNotFound
-	}
-
-	return cloneRoute(route), nil
-}
-
-func (s *Store) FindCandidates(method string) []RouteValue {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	routes := make([]RouteValue, 0, len(s.routes))
-	for _, route := range s.routes {
-		if route.Method == method || route.Method == "ANY" {
-			routes = append(routes, *cloneRoute(route))
-		}
-	}
-
-	return routes
-}
-
-func (s *Store) FindAPIKeyByHash(hash string) (APIKeyValue, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	apiKey, ok := s.apiKeysByHash[hash]
-	if !ok {
-		return APIKeyValue{}, false
-	}
-
-	return cloneAPIKey(apiKey), true
-}
-func (s *Store) Pipeline(routeID string) []PipelineValue {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	pipeline := s.pipelines[routeID]
-	out := make([]PipelineValue, len(pipeline))
-	copy(out, pipeline)
-	return out
-}
-
-func (s *Store) ActiveInstances() []ActiveInstanceValue {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	seen := map[string]struct{}{}
-	instances := []ActiveInstanceValue{}
-	for _, route := range s.routes {
-		for _, instance := range route.Instances {
-			if _, ok := seen[instance.ID]; ok {
-				continue
-			}
-			seen[instance.ID] = struct{}{}
-			instances = append(instances, ActiveInstanceValue{
-				ServiceID:  route.Service.ID,
-				InstanceID: instance.ID,
-				Host:       instance.Host,
-				Port:       instance.Port,
-				HealthPath: route.Service.HealthPath,
-			})
-		}
-	}
-
-	return instances
-}
-
-func (s *Store) FindActiveInstance(instanceID string) (ActiveInstanceValue, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	for _, route := range s.routes {
-		for _, instance := range route.Instances {
-			if instance.ID == instanceID {
-				return ActiveInstanceValue{
-					ServiceID:  route.Service.ID,
-					InstanceID: instance.ID,
-					Host:       instance.Host,
-					Port:       instance.Port,
-					HealthPath: route.Service.HealthPath,
-				}, true
-			}
-		}
-	}
-
-	return ActiveInstanceValue{}, false
-}
-
-func (s *Store) ActiveInstancesByService(serviceID string) []ActiveInstanceValue {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	seen := map[string]struct{}{}
-	instances := []ActiveInstanceValue{}
-	for _, route := range s.routes {
-		if route.Service.ID != serviceID {
-			continue
-		}
-		for _, instance := range route.Instances {
-			if _, ok := seen[instance.ID]; ok {
-				continue
-			}
-			seen[instance.ID] = struct{}{}
-			instances = append(instances, ActiveInstanceValue{
-				ServiceID:  route.Service.ID,
-				InstanceID: instance.ID,
-				Host:       instance.Host,
-				Port:       instance.Port,
-				HealthPath: route.Service.HealthPath,
-			})
-		}
-	}
-
-	return instances
 }
 
 func (s *Store) RebuildAll(ctx context.Context) error {
@@ -291,6 +155,16 @@ func (s *Store) readSnapshot(ctx context.Context) (snapshot, error) {
 	}
 	defer tx.Rollback(ctx)
 
+	services, err := readServices(ctx, tx, s.config.SchemaVersion)
+	if err != nil {
+		return snapshot{}, err
+	}
+
+	instancesByServiceID, err := readServiceInstances(ctx, tx)
+	if err != nil {
+		return snapshot{}, err
+	}
+
 	routes, err := readRoutes(ctx, tx, s.config.SchemaVersion)
 	if err != nil {
 		return snapshot{}, err
@@ -306,423 +180,37 @@ func (s *Store) readSnapshot(ctx context.Context) (snapshot, error) {
 		return snapshot{}, err
 	}
 
+	aggregations, err := readAggregations(ctx, tx, s.config.SchemaVersion)
+	if err != nil {
+		return snapshot{}, err
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return snapshot{}, err
 	}
 
 	return snapshot{
-		Routes:     routes,
-		APIKeys:    apiKeys,
-		Pipelines:  pipelines,
-		PluginMeta: pluginMeta,
+		Services:             services,
+		InstancesByServiceID: instancesByServiceID,
+		Routes:               routes,
+		APIKeys:              apiKeys,
+		Aggregations:         aggregations,
+		Pipelines:            pipelines,
+		PluginMeta:           pluginMeta,
 	}, nil
 }
 
-func readRoutes(ctx context.Context, tx pgx.Tx, schemaVersion int) ([]RouteValue, error) {
-	rows, err := tx.Query(ctx, `
-		SELECT
-			r.id::text,
-			r.path,
-			r.method,
-			r.strip_prefix,
-			r.rewrite_target,
-			r.auth_required,
-			r.required_scope_id::text,
-			r.rate_limit_id::text,
-			rlp.id::text,
-			COALESCE(rlp.name, ''),
-			COALESCE(rlp.limit_type, ''),
-			COALESCE(rlp.max_requests, 0),
-			COALESCE(rlp.window_seconds, 0),
-			cc.id::text,
-			COALESCE(cc.allowed_origins, '{}'::text[]),
-			COALESCE(cc.allowed_methods, '{}'::text[]),
-			COALESCE(cc.allowed_headers, '{}'::text[]),
-			COALESCE(cc.allow_credentials, FALSE),
-			COALESCE(cc.max_age, 0),
-			r.priority,
-			s.id::text,
-			s.name,
-			s.protocol,
-			s.lb_strategy,
-			COALESCE(s.health_path, ''),
-			s.timeout_ms,
-			s.retry_count,
-			s.circuit_breaker_enabled,
-			COALESCE(
-				jsonb_agg(
-					jsonb_build_object(
-						'id', si.id::text,
-						'host', si.host,
-						'port', si.port,
-						'weight', si.weight
-					)
-					ORDER BY si.created_at ASC
-				) FILTER (WHERE si.id IS NOT NULL),
-				'[]'::jsonb
-			)
-		FROM routes r
-		JOIN services s ON s.id = r.service_id
-		LEFT JOIN rate_limit_policies rlp ON rlp.id = r.rate_limit_id AND rlp.is_active = TRUE AND rlp.deleted_at IS NULL
-		LEFT JOIN cors_configs cc ON cc.route_id = r.id AND cc.is_active = TRUE AND cc.deleted_at IS NULL
-		LEFT JOIN service_instances si ON si.service_id = s.id AND si.is_active = TRUE AND si.deleted_at IS NULL
-		WHERE r.is_active = TRUE
-		  AND r.deleted_at IS NULL
-		  AND s.is_active = TRUE
-		  AND s.deleted_at IS NULL
-		  AND s.protocol = 'http'
-		GROUP BY r.id, s.id, rlp.id, cc.id
-		ORDER BY r.priority DESC, length(r.path) DESC, r.created_at DESC
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var routes []RouteValue
-	for rows.Next() {
-		var route RouteValue
-		var rateLimitID *string
-		var rateLimitPolicyID sql.NullString
-		var rateLimitPolicy RateLimitPolicyValue
-		var corsID sql.NullString
-		var corsValue CORSValue
-		var instances []byte
-
-		err := rows.Scan(
-			&route.RouteID,
-			&route.Path,
-			&route.Method,
-			&route.StripPrefix,
-			&route.RewriteTarget,
-			&route.AuthRequired,
-			&route.RequiredScopeID,
-			&rateLimitID,
-			&rateLimitPolicyID,
-			&rateLimitPolicy.Name,
-			&rateLimitPolicy.LimitType,
-			&rateLimitPolicy.MaxRequests,
-			&rateLimitPolicy.WindowSeconds,
-			&corsID,
-			&corsValue.AllowedOrigins,
-			&corsValue.AllowedMethods,
-			&corsValue.AllowedHeaders,
-			&corsValue.AllowCredentials,
-			&corsValue.MaxAge,
-			&route.Priority,
-			&route.Service.ID,
-			&route.Service.Name,
-			&route.Service.Protocol,
-			&route.Service.LBStrategy,
-			&route.Service.HealthPath,
-			&route.Service.TimeoutMS,
-			&route.Service.RetryCount,
-			&route.Service.CircuitBreakerEnabled,
-			&instances,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		route.SchemaVersion = schemaVersion
-		route.RateLimitID = rateLimitID
-		if rateLimitPolicyID.Valid {
-			rateLimitPolicy.ID = rateLimitPolicyID.String
-			route.RateLimit = &rateLimitPolicy
-		}
-		if corsID.Valid {
-			route.CORS = &corsValue
-		}
-		if err := json.Unmarshal(instances, &route.Instances); err != nil {
-			return nil, err
-		}
-
-		routes = append(routes, route)
-	}
-
-	return routes, rows.Err()
-}
-
-func readAPIKeys(ctx context.Context, tx pgx.Tx, schemaVersion int) ([]APIKeyValue, error) {
-	rows, err := tx.Query(ctx, `
-		SELECT
-			ak.id::text,
-			ak.key_hash,
-			ak.key_prefix,
-			ak.client_id::text,
-			c.owner_user_id::text,
-			COALESCE(array_agg(asc_.id::text ORDER BY asc_.resource, asc_.action) FILTER (WHERE asc_.id IS NOT NULL), '{}'::text[]) AS scope_ids,
-			ak.rate_limit_id::text,
-			ak.expires_at,
-			ak.is_active,
-			ak.revoked_at,
-			c.is_active
-		FROM api_keys ak
-		JOIN clients c ON c.id = ak.client_id
-		LEFT JOIN api_key_scopes aks ON aks.api_key_id = ak.id
-		LEFT JOIN api_scopes asc_ ON asc_.id = aks.scope_id AND asc_.deleted_at IS NULL AND asc_.is_active
-		WHERE ak.deleted_at IS NULL
-		  AND c.deleted_at IS NULL
-		GROUP BY ak.id, c.id
-	`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	apiKeys := []APIKeyValue{}
-	for rows.Next() {
-		var apiKey APIKeyValue
-		err := rows.Scan(
-			&apiKey.ID,
-			&apiKey.KeyHash,
-			&apiKey.KeyPrefix,
-			&apiKey.ClientID,
-			&apiKey.OwnerUserID,
-			&apiKey.ScopeIDs,
-			&apiKey.RateLimitID,
-			&apiKey.ExpiresAt,
-			&apiKey.IsActive,
-			&apiKey.RevokedAt,
-			&apiKey.ClientActive,
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		apiKey.SchemaVersion = schemaVersion
-		apiKeys = append(apiKeys, apiKey)
-	}
-
-	return apiKeys, rows.Err()
-}
-func readPlugins(ctx context.Context, tx pgx.Tx, schemaVersion int) (map[string][]PipelineValue, map[string]PluginMetaValue, error) {
-	rows, err := tx.Query(ctx, `
-		SELECT
-			rp.route_id::text,
-			gp.code,
-			gp.name,
-			gp.description,
-			gp.phase,
-			gp.default_priority,
-			gp.config_schema,
-			rp.priority,
-			rp.config,
-			rp.is_required
-		FROM route_plugins rp
-		JOIN gateway_plugins gp ON gp.id = rp.plugin_id
-		WHERE rp.is_active = TRUE
-		  AND rp.deleted_at IS NULL
-		  AND gp.is_active = TRUE
-		  AND gp.deleted_at IS NULL
-		ORDER BY rp.route_id, gp.phase, rp.priority
-	`)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer rows.Close()
-
-	pipelines := map[string][]PipelineValue{}
-	pluginMeta := map[string]PluginMetaValue{}
-
-	for rows.Next() {
-		var routeID string
-		var meta PluginMetaValue
-		var step PipelineValue
-
-		err := rows.Scan(
-			&routeID,
-			&meta.Code,
-			&meta.Name,
-			&meta.Description,
-			&meta.Phase,
-			&meta.DefaultPriority,
-			&meta.ConfigSchema,
-			&step.Priority,
-			&step.Config,
-			&step.IsRequired,
-		)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		meta.SchemaVersion = schemaVersion
-		step.Code = meta.Code
-		step.Phase = meta.Phase
-		pipelines[routeID] = append(pipelines[routeID], step)
-		pluginMeta[meta.Code] = meta
-	}
-
-	for routeID := range pipelines {
-		sort.SliceStable(pipelines[routeID], func(i, j int) bool {
-			if pipelines[routeID][i].Phase == pipelines[routeID][j].Phase {
-				return pipelines[routeID][i].Priority < pipelines[routeID][j].Priority
-			}
-			return phaseOrder(pipelines[routeID][i].Phase) < phaseOrder(pipelines[routeID][j].Phase)
-		})
-	}
-
-	return pipelines, pluginMeta, rows.Err()
-}
-
-func (s *Store) writeSnapshot(ctx context.Context, snap snapshot) error {
-	// MULTI/EXEC keeps each route JSON, plugins, and pipeline visible as one config generation.
-	pipe := s.redis.TxPipeline()
-
-	staleKeys, err := s.scanConfigKeys(ctx, "cfg:route:*", "cfg:apikey:*", "cfg:pipeline:*", "cfg:plugins:*", "cfg:plugin:*")
-	if err != nil {
-		return err
-	}
-	if len(staleKeys) > 0 {
-		pipe.Del(ctx, staleKeys...)
-	}
-
-	for _, route := range snap.Routes {
-		if err := setJSON(ctx, pipe, routeKey(route.Method, route.Path), route, s.config.ConfigTTL); err != nil {
-			return err
-		}
-
-		routePlugins := RoutePluginsValue{
-			SchemaVersion: s.config.SchemaVersion,
-			Items:         snap.Pipelines[route.RouteID],
-		}
-		if err := setJSON(ctx, pipe, fmt.Sprintf("cfg:plugins:%s", route.RouteID), routePlugins, s.config.ConfigTTL); err != nil {
-			return err
-		}
-
-		pipeline := PipelineCacheValue{
-			SchemaVersion: s.config.SchemaVersion,
-			Items:         snap.Pipelines[route.RouteID],
-		}
-		if err := setJSON(ctx, pipe, fmt.Sprintf("cfg:pipeline:%s", route.RouteID), pipeline, s.config.ConfigTTL); err != nil {
-			return err
-		}
-	}
-
-	for _, apiKey := range snap.APIKeys {
-		if err := setJSON(ctx, pipe, fmt.Sprintf("cfg:apikey:%s", apiKey.KeyHash), apiKey, s.config.ConfigTTL); err != nil {
-			return err
-		}
-	}
-	for _, meta := range snap.PluginMeta {
-		if err := setJSON(ctx, pipe, fmt.Sprintf("cfg:plugin:%s", meta.Code), meta, s.config.ConfigTTL); err != nil {
-			return err
-		}
-	}
-
-	_, err = pipe.Exec(ctx)
-	return err
-}
-
-func (s *Store) loadFromRedis(ctx context.Context) error {
-	keys, err := s.scanConfigKeys(ctx, "cfg:route:*")
-	if err != nil {
-		return err
-	}
-
-	snap := snapshot{
-		Pipelines:  map[string][]PipelineValue{},
-		PluginMeta: map[string]PluginMetaValue{},
-	}
-
-	for _, key := range keys {
-		value, err := s.redis.Get(ctx, key).Bytes()
-		if err != nil {
-			return err
-		}
-
-		var route RouteValue
-		if err := json.Unmarshal(value, &route); err != nil {
-			return err
-		}
-		if route.SchemaVersion != s.config.SchemaVersion {
-			return s.RebuildAll(ctx)
-		}
-
-		pipelineValue, err := s.readPipeline(ctx, route.RouteID)
-		if err != nil {
-			return err
-		}
-
-		snap.Routes = append(snap.Routes, route)
-		snap.Pipelines[route.RouteID] = pipelineValue.Items
-	}
-
-	apiKeyKeys, err := s.scanConfigKeys(ctx, "cfg:apikey:*")
-	if err != nil {
-		return err
-	}
-	for _, key := range apiKeyKeys {
-		value, err := s.redis.Get(ctx, key).Bytes()
-		if err != nil {
-			return err
-		}
-
-		var apiKey APIKeyValue
-		if err := json.Unmarshal(value, &apiKey); err != nil {
-			return err
-		}
-		if apiKey.SchemaVersion != s.config.SchemaVersion {
-			return s.RebuildAll(ctx)
-		}
-
-		snap.APIKeys = append(snap.APIKeys, apiKey)
-	}
-	sortRoutes(snap.Routes)
-
-	version, err := s.redis.Get(ctx, KeyVersion).Int64()
-	if errors.Is(err, redis.Nil) {
-		version = 0
-	} else if err != nil {
-		return err
-	}
-	snap.Version = version
-
-	s.applySnapshot(snap)
-	return nil
-}
-
-func (s *Store) readPipeline(ctx context.Context, routeID string) (PipelineCacheValue, error) {
-	value, err := s.redis.Get(ctx, fmt.Sprintf("cfg:pipeline:%s", routeID)).Bytes()
-	if errors.Is(err, redis.Nil) {
-		return PipelineCacheValue{SchemaVersion: s.config.SchemaVersion}, nil
-	}
-	if err != nil {
-		return PipelineCacheValue{}, err
-	}
-
-	var pipeline PipelineCacheValue
-	if err := json.Unmarshal(value, &pipeline); err != nil {
-		return PipelineCacheValue{}, err
-	}
-	if pipeline.SchemaVersion != s.config.SchemaVersion {
-		return PipelineCacheValue{}, fmt.Errorf("unsupported pipeline schema_version %d", pipeline.SchemaVersion)
-	}
-
-	return pipeline, nil
-}
-
-func (s *Store) scanConfigKeys(ctx context.Context, patterns ...string) ([]string, error) {
-	var keys []string
-	for _, pattern := range patterns {
-		var cursor uint64
-		for {
-			found, next, err := s.redis.Scan(ctx, cursor, pattern, 100).Result()
-			if err != nil {
-				return nil, err
-			}
-			keys = append(keys, found...)
-			cursor = next
-			if cursor == 0 {
-				break
-			}
-		}
-	}
-
-	return keys, nil
-}
-
 func (s *Store) applySnapshot(snap snapshot) {
+	servicesByID := map[string]ServiceValue{}
+	for _, service := range snap.Services {
+		servicesByID[service.ID] = service
+	}
+
+	instancesByServiceID := map[string][]InstanceValue{}
+	for serviceID, instances := range snap.InstancesByServiceID {
+		instancesByServiceID[serviceID] = cloneInstances(instances)
+	}
+
 	routesByKey := map[string]RouteValue{}
 	for _, route := range snap.Routes {
 		routesByKey[routeKey(route.Method, route.Path)] = route
@@ -732,107 +220,28 @@ func (s *Store) applySnapshot(snap snapshot) {
 	for _, apiKey := range snap.APIKeys {
 		apiKeysByHash[apiKey.KeyHash] = apiKey
 	}
+
+	aggregationsByKey := map[string]AggregationValue{}
+	for _, aggregation := range snap.Aggregations {
+		aggregationsByKey[aggregationKey(aggregation.Method, aggregation.Path)] = aggregation
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.routes = snap.Routes
 	s.routesByKey = routesByKey
+	s.servicesByID = servicesByID
+	s.instancesByServiceID = instancesByServiceID
 	s.apiKeysByHash = apiKeysByHash
+	s.aggregationsByKey = aggregationsByKey
 	s.pipelines = snap.Pipelines
 	s.pluginMeta = snap.PluginMeta
 	s.localVersion = snap.Version
-}
-
-func (s *Store) rememberRoute(route RouteValue) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.routesByKey[routeKey(route.Method, route.Path)] = route
 }
 
 func (s *Store) CurrentVersion() int64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.localVersion
-}
-
-func setJSON(ctx context.Context, pipe redis.Pipeliner, key string, value any, ttl time.Duration) error {
-	payload, err := json.Marshal(value)
-	if err != nil {
-		return err
-	}
-
-	if ttl > 0 {
-		pipe.Set(ctx, key, payload, ttl)
-		return nil
-	}
-
-	pipe.Set(ctx, key, payload, 0)
-	return nil
-}
-
-func routeKey(method string, path string) string {
-	return fmt.Sprintf("cfg:route:%s:%s", strings.ToUpper(method), path)
-}
-
-func phaseOrder(phase string) int {
-	switch phase {
-	case "before_request":
-		return 10
-	case "proxy":
-		return 20
-	case "after_response":
-		return 30
-	case "on_error":
-		return 40
-	default:
-		return 100
-	}
-}
-
-func sortRoutes(routes []RouteValue) {
-	sort.SliceStable(routes, func(i, j int) bool {
-		if routes[i].Priority != routes[j].Priority {
-			return routes[i].Priority > routes[j].Priority
-		}
-		if len(routes[i].Path) != len(routes[j].Path) {
-			return len(routes[i].Path) > len(routes[j].Path)
-		}
-		return routes[i].RouteID < routes[j].RouteID
-	})
-}
-
-func cloneRoute(route RouteValue) *RouteValue {
-	cloned := route
-	if route.Instances != nil {
-		cloned.Instances = make([]InstanceValue, len(route.Instances))
-		copy(cloned.Instances, route.Instances)
-	}
-	if route.RateLimit != nil {
-		rateLimit := *route.RateLimit
-		cloned.RateLimit = &rateLimit
-	}
-	if route.CORS != nil {
-		corsValue := *route.CORS
-		corsValue.AllowedOrigins = append([]string(nil), route.CORS.AllowedOrigins...)
-		corsValue.AllowedMethods = append([]string(nil), route.CORS.AllowedMethods...)
-		corsValue.AllowedHeaders = append([]string(nil), route.CORS.AllowedHeaders...)
-		cloned.CORS = &corsValue
-	}
-	return &cloned
-}
-
-func cloneAPIKey(apiKey APIKeyValue) APIKeyValue {
-	cloned := apiKey
-	if apiKey.ScopeIDs != nil {
-		cloned.ScopeIDs = append([]string(nil), apiKey.ScopeIDs...)
-	}
-	return cloned
-}
-func ParseDurationSeconds(value string, fallback time.Duration) time.Duration {
-	seconds, err := strconv.Atoi(value)
-	if err != nil || seconds < 0 {
-		return fallback
-	}
-	return time.Duration(seconds) * time.Second
 }

@@ -8,17 +8,15 @@ import (
 )
 
 func TestUpstreamRoutesPreservesAuthRequired(t *testing.T) {
-	routes := upstreamRoutesFromCache(configcache.RouteValue{
-		RouteID:      "route-1",
-		AuthRequired: true,
-		Service:      configcache.ServiceValue{ID: "service-1"},
-		Instances:    []configcache.InstanceValue{{ID: "instance-1"}},
-	})
+	routes := upstreamRoutesFromCache(
+		configcache.RouteValue{RouteID: "route-1", AuthRequired: true, ServiceID: "service-1"},
+		configcache.ServiceValue{ID: "service-1"},
+		[]configcache.InstanceValue{{ID: "instance-1", ServiceID: "service-1"}},
+	)
 	if len(routes) != 1 || !routes[0].AuthRequired {
 		t.Fatalf("expected auth_required to be preserved: %#v", routes)
 	}
 }
-
 func TestMatchPathSupportsCatchAllWildcard(t *testing.T) {
 	params, ok := matchPath("/api/*", "/api/users/42")
 	if !ok {

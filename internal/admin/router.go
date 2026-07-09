@@ -3,6 +3,8 @@ package admin
 import (
 	"context"
 
+	adminAggregations "gateway-api/internal/admin/aggregations"
+
 	adminAPIKeys "gateway-api/internal/admin/apikeys"
 	adminCache "gateway-api/internal/admin/cache"
 	adminClients "gateway-api/internal/admin/clients"
@@ -42,6 +44,7 @@ func RegisterAdminRoutes(app *fiber.App, db *pgxpool.Pool, redisClient *redis.Cl
 	adminCache.RegisterCacheRoutes(admin.Group("/cache"), cacheStore, notifier, redisClient)
 	adminClients.RegisterClientRoutes(admin.Group("/clients"), db, notifier)
 	adminAPIKeys.RegisterAPIKeyRoutes(admin.Group("/api-keys"), db, notifier)
+	adminAggregations.RegisterAggregationRoutes(admin, db, notifier)
 	adminRoles.RegisterRoleRoutes(admin.Group("/roles"), db)
 	adminPermissions.RegisterPermissionRoutes(admin.Group("/permissions"), db)
 	adminUsers.RegisterUserRoutes(admin.Group("/users"), db)
