@@ -75,6 +75,7 @@ func main() {
 		RebuildLockTTL:  cfg.ConfigRebuildLockTTL,
 		RebuildLockWait: cfg.ConfigLockWait,
 		SchemaVersion:   cfg.ConfigSchemaVersion,
+		CORSSource:      cfg.CORSSource,
 	})
 
 	if err := cacheStore.WarmAll(ctx); err != nil {

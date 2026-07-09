@@ -59,3 +59,46 @@ func TestActualCORSHeadersAreAppliedAfterResponse(t *testing.T) {
 		t.Fatalf("unexpected allow credentials: %q", got)
 	}
 }
+
+func TestSpecificOriginSetsVaryAndExposedHeaders(t *testing.T) {
+	config := &configcache.CORSValue{
+		AllowedOrigins: []string{"http://localhost:5173"},
+		ExposedHeaders: []string{"X-Request-ID"},
+	}
+	app := fiber.New()
+	app.Get("/", func(c *fiber.Ctx) error {
+		defer setActualCORSHeaders(c, config, "http://localhost:5173")
+		return c.SendString("ok")
+	})
+
+	response, err := app.Test(httptest.NewRequest("GET", "/", nil))
+	if err != nil {
+		t.Fatalf("unexpected app error: %v", err)
+	}
+	if got := response.Header.Get(fiber.HeaderVary); got != fiber.HeaderOrigin {
+		t.Fatalf("unexpected vary header: %q", got)
+	}
+	if got := response.Header.Get(fiber.HeaderAccessControlExposeHeaders); got != "X-Request-ID" {
+		t.Fatalf("unexpected exposed headers: %q", got)
+	}
+}
+
+func TestWildcardOriginDoesNotSetVary(t *testing.T) {
+	config := &configcache.CORSValue{AllowedOrigins: []string{"*"}}
+	app := fiber.New()
+	app.Get("/", func(c *fiber.Ctx) error {
+		defer setActualCORSHeaders(c, config, "http://localhost:5173")
+		return c.SendString("ok")
+	})
+
+	response, err := app.Test(httptest.NewRequest("GET", "/", nil))
+	if err != nil {
+		t.Fatalf("unexpected app error: %v", err)
+	}
+	if got := response.Header.Get(fiber.HeaderAccessControlAllowOrigin); got != "*" {
+		t.Fatalf("unexpected allow origin: %q", got)
+	}
+	if got := response.Header.Get(fiber.HeaderVary); got != "" {
+		t.Fatalf("expected no vary header for wildcard, got %q", got)
+	}
+}

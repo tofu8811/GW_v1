@@ -12,6 +12,7 @@ import (
 )
 
 var ErrRateLimitPolicyNotFound = errors.New("rate limit policy not found")
+var ErrRateLimitPolicyInUse = errors.New("rate limit policy is still used by active routes or aggregations")
 
 type Repository struct {
 	db *pgxpool.Pool
@@ -143,6 +144,13 @@ func (r *Repository) Update(ctx context.Context, policy *RateLimitPolicy) error 
 }
 
 func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
+	inUse, err := r.isInUse(ctx, id)
+	if err != nil {
+		return err
+	}
+	if inUse {
+		return ErrRateLimitPolicyInUse
+	}
 	result, err := r.db.Exec(ctx, `UPDATE rate_limit_policies SET is_active = FALSE, deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`, id)
 	if err != nil {
 		return err
@@ -152,4 +160,16 @@ func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
 	}
 
 	return nil
+}
+
+func (r *Repository) isInUse(ctx context.Context, id uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM routes WHERE rate_limit_id = $1 AND is_active = TRUE AND deleted_at IS NULL
+			UNION ALL
+			SELECT 1 FROM aggregation_configs WHERE rate_limit_id = $1 AND is_active = TRUE AND deleted_at IS NULL
+		)
+	`, id).Scan(&exists)
+	return exists, err
 }

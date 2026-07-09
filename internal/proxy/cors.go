@@ -25,6 +25,17 @@ func (h *Handler) handleCORSPreflight(c *fiber.Ctx, path string) error {
 		return response.BadRequest(c, "invalid CORS preflight request")
 	}
 
+	if aggregation, _, ok := h.findAggregation(path, requestedMethod); ok {
+		if err := validateCORSRequest(aggregation.CORS, origin, requestedMethod); err != nil {
+			return response.Forbidden(c, err.Error())
+		}
+		if !headersAllowed(aggregation.CORS, c.Get(fiber.HeaderAccessControlRequestHeaders)) {
+			return response.Forbidden(c, errCORSHeaderDenied.Error())
+		}
+		setPreflightCORSHeaders(c, aggregation.CORS, origin)
+		return response.NoContent(c)
+	}
+
 	route, err := h.findRouteForCORS(path, requestedMethod)
 	if errors.Is(err, ErrRouteNotFound) {
 		return response.NotFound(c, "gateway route not found")
@@ -60,7 +71,7 @@ func validateCORSRequest(config *configcache.CORSValue, origin string, method st
 	if !originAllowed(config.AllowedOrigins, origin) {
 		return errCORSOriginDenied
 	}
-	if !containsFold(config.AllowedMethods, method) {
+	if !containsFold(config.AllowedMethods, strings.ToUpper(strings.TrimSpace(method))) {
 		return errCORSMethodDenied
 	}
 	return nil
@@ -91,6 +102,9 @@ func headersAllowed(config *configcache.CORSValue, requested string) bool {
 
 func setActualCORSHeaders(c *fiber.Ctx, config *configcache.CORSValue, origin string) {
 	setCORSOriginHeaders(c, config, origin)
+	if len(config.ExposedHeaders) > 0 {
+		c.Set(fiber.HeaderAccessControlExposeHeaders, strings.Join(config.ExposedHeaders, ", "))
+	}
 }
 
 func setPreflightCORSHeaders(c *fiber.Ctx, config *configcache.CORSValue, origin string) {
@@ -108,7 +122,9 @@ func setCORSOriginHeaders(c *fiber.Ctx, config *configcache.CORSValue, origin st
 		allowedOrigin = "*"
 	}
 	c.Set(fiber.HeaderAccessControlAllowOrigin, allowedOrigin)
-	appendVary(c, fiber.HeaderOrigin)
+	if allowedOrigin != "*" {
+		appendVary(c, fiber.HeaderOrigin)
+	}
 	if config.AllowCredentials {
 		c.Set(fiber.HeaderAccessControlAllowCredentials, "true")
 	} else {

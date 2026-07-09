@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	CurrentSchemaVersion = 3
+	CurrentSchemaVersion = 6
 
 	KeyVersion     = "cfg:version"
 	KeyReload      = "cfg:reload"
@@ -19,6 +19,7 @@ type Config struct {
 	RebuildLockTTL  time.Duration
 	RebuildLockWait time.Duration
 	SchemaVersion   int
+	CORSSource      string
 }
 
 func DefaultConfig() Config {
@@ -28,6 +29,7 @@ func DefaultConfig() Config {
 		RebuildLockTTL:  10 * time.Second,
 		RebuildLockWait: 2 * time.Second,
 		SchemaVersion:   CurrentSchemaVersion,
+		CORSSource:      "policy",
 	}
 }
 
@@ -44,14 +46,14 @@ type RouteValue struct {
 	RateLimit       *RateLimitPolicyValue `json:"rate_limit,omitempty"`
 	CORS            *CORSValue            `json:"cors,omitempty"`
 	Priority        int                   `json:"priority"`
-	Service         ServiceValue          `json:"service"`
-	Instances       []InstanceValue       `json:"instances"`
+	ServiceID       string                `json:"service_id"`
 }
 
 type CORSValue struct {
 	AllowedOrigins   []string `json:"allowed_origins"`
 	AllowedMethods   []string `json:"allowed_methods"`
 	AllowedHeaders   []string `json:"allowed_headers"`
+	ExposedHeaders   []string `json:"exposed_headers"`
 	AllowCredentials bool     `json:"allow_credentials"`
 	MaxAge           int      `json:"max_age"`
 }
@@ -78,7 +80,34 @@ type APIKeyValue struct {
 	RevokedAt     *time.Time `json:"revoked_at"`
 	ClientActive  bool       `json:"client_active"`
 }
+
+type AggregationValue struct {
+	SchemaVersion   int                    `json:"schema_version"`
+	ID              string                 `json:"id"`
+	Name            string                 `json:"name"`
+	Path            string                 `json:"path"`
+	Method          string                 `json:"method"`
+	AuthRequired    bool                   `json:"auth_required"`
+	RequiredScopeID *string                `json:"required_scope_id"`
+	RateLimitID     *string                `json:"rate_limit_id"`
+	RateLimit       *RateLimitPolicyValue  `json:"rate_limit,omitempty"`
+	CORSPolicyID    *string                `json:"cors_policy_id"`
+	CORS            *CORSValue             `json:"cors,omitempty"`
+	Steps           []AggregationStepValue `json:"steps"`
+}
+
+type AggregationStepValue struct {
+	ID              string          `json:"id"`
+	Sequence        int             `json:"sequence"`
+	DependsOn       *string         `json:"depends_on"`
+	IsRequired      bool            `json:"is_required"`
+	RequestTemplate json.RawMessage `json:"request_template"`
+	ResponseMapping json.RawMessage `json:"response_mapping"`
+	ServiceID       string          `json:"service_id"`
+}
+
 type ServiceValue struct {
+	SchemaVersion         int    `json:"schema_version"`
 	ID                    string `json:"id"`
 	Name                  string `json:"name"`
 	Protocol              string `json:"protocol"`
@@ -90,10 +119,17 @@ type ServiceValue struct {
 }
 
 type InstanceValue struct {
-	ID     string `json:"id"`
-	Host   string `json:"host"`
-	Port   int    `json:"port"`
-	Weight int    `json:"weight"`
+	ID        string `json:"id"`
+	ServiceID string `json:"service_id"`
+	Host      string `json:"host"`
+	Port      int    `json:"port"`
+	Weight    int    `json:"weight"`
+}
+
+type ServiceInstancesValue struct {
+	SchemaVersion int             `json:"schema_version"`
+	ServiceID     string          `json:"service_id"`
+	Items         []InstanceValue `json:"items"`
 }
 
 type ActiveInstanceValue struct {
@@ -133,9 +169,12 @@ type PipelineValue struct {
 }
 
 type snapshot struct {
-	Routes     []RouteValue
-	APIKeys    []APIKeyValue
-	Pipelines  map[string][]PipelineValue
-	PluginMeta map[string]PluginMetaValue
-	Version    int64
+	Services             []ServiceValue
+	InstancesByServiceID map[string][]InstanceValue
+	Routes               []RouteValue
+	APIKeys              []APIKeyValue
+	Aggregations         []AggregationValue
+	Pipelines            map[string][]PipelineValue
+	PluginMeta           map[string]PluginMetaValue
+	Version              int64
 }
