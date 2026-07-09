@@ -58,9 +58,11 @@ var constraintErrors = map[string]APIError{
 	"role_permissions_permission_id_fkey": {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "permission_id does not exist"},
 
 	// users
-	"users_username_unique": {Status: http.StatusConflict, Code: "conflict", Message: "username already exists"},
-	"users_email_unique":    {Status: http.StatusConflict, Code: "conflict", Message: "email already exists"},
-	"users_role_id_fkey":    {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "role_id does not exist"},
+	"users_username_unique":        {Status: http.StatusConflict, Code: "conflict", Message: "username already exists"},
+	"users_username_active_unique": {Status: http.StatusConflict, Code: "conflict", Message: "username already exists"},
+	"users_email_unique":           {Status: http.StatusConflict, Code: "conflict", Message: "email already exists"},
+	"users_email_active_unique":    {Status: http.StatusConflict, Code: "conflict", Message: "email already exists"},
+	"users_role_id_fkey":           {Status: http.StatusUnprocessableEntity, Code: "invalid_reference", Message: "role_id does not exist"},
 
 	// api_keys
 	"api_keys_key_hash_unique":        {Status: http.StatusConflict, Code: "conflict", Message: "API key already exists"},

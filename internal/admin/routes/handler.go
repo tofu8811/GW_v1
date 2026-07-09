@@ -67,6 +67,11 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		return response.BadRequest(c, err.Error())
 	}
 
+	corsPolicyID, err := validation.ParseOptionalUUID("cors_policy_id", req.CORSPolicyID)
+	if err != nil {
+		return response.BadRequest(c, err.Error())
+	}
+
 	route := Route{
 		ID:              id,
 		Path:            path,
@@ -77,6 +82,7 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		AuthRequired:    authRequired,
 		RequiredScopeID: requiredScopeID,
 		RateLimitID:     rateLimitID,
+		CORSPolicyID:    corsPolicyID,
 		Priority:        intValue(req.Priority, 0),
 		IsActive:        boolValue(req.IsActive, true),
 	}
@@ -203,6 +209,14 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 			return response.BadRequest(c, err.Error())
 		}
 		route.RateLimitID = rateLimitID
+	}
+
+	if req.CORSPolicyID.Set {
+		corsPolicyID, err := validation.ParseOptionalUUID("cors_policy_id", req.CORSPolicyID.Value)
+		if err != nil {
+			return response.BadRequest(c, err.Error())
+		}
+		route.CORSPolicyID = corsPolicyID
 	}
 
 	if req.Priority != nil {

@@ -12,4 +12,6 @@ func RegisterUserRoutes(router fiber.Router, db *pgxpool.Pool) {
 
 	router.Get("/", middleware.RequirePermission("users:read"), handler.FindAll)
 	router.Get("/:id", middleware.RequirePermission("users:read"), handler.FindByID)
+	router.Put("/:id", middleware.RequirePermission("users:write"), handler.Update)
+	router.Delete("/:id", middleware.RequirePermission("users:write"), handler.Delete)
 }
