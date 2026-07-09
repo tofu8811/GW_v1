@@ -165,7 +165,7 @@ func (s *Store) readSnapshot(ctx context.Context) (snapshot, error) {
 		return snapshot{}, err
 	}
 
-	routes, err := readRoutes(ctx, tx, s.config.SchemaVersion)
+	routes, err := readRoutes(ctx, tx, s.config.SchemaVersion, s.config.CORSSource)
 	if err != nil {
 		return snapshot{}, err
 	}
@@ -180,7 +180,7 @@ func (s *Store) readSnapshot(ctx context.Context) (snapshot, error) {
 		return snapshot{}, err
 	}
 
-	aggregations, err := readAggregations(ctx, tx, s.config.SchemaVersion)
+	aggregations, err := readAggregations(ctx, tx, s.config.SchemaVersion, s.config.CORSSource)
 	if err != nil {
 		return snapshot{}, err
 	}

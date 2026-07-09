@@ -80,6 +80,7 @@ func cloneRoute(route RouteValue) *RouteValue {
 		corsValue.AllowedOrigins = append([]string(nil), route.CORS.AllowedOrigins...)
 		corsValue.AllowedMethods = append([]string(nil), route.CORS.AllowedMethods...)
 		corsValue.AllowedHeaders = append([]string(nil), route.CORS.AllowedHeaders...)
+		corsValue.ExposedHeaders = append([]string(nil), route.CORS.ExposedHeaders...)
 		cloned.CORS = &corsValue
 	}
 	return &cloned
@@ -87,6 +88,14 @@ func cloneRoute(route RouteValue) *RouteValue {
 
 func cloneAggregation(aggregation AggregationValue) *AggregationValue {
 	cloned := aggregation
+	if aggregation.CORS != nil {
+		corsValue := *aggregation.CORS
+		corsValue.AllowedOrigins = append([]string(nil), aggregation.CORS.AllowedOrigins...)
+		corsValue.AllowedMethods = append([]string(nil), aggregation.CORS.AllowedMethods...)
+		corsValue.AllowedHeaders = append([]string(nil), aggregation.CORS.AllowedHeaders...)
+		corsValue.ExposedHeaders = append([]string(nil), aggregation.CORS.ExposedHeaders...)
+		cloned.CORS = &corsValue
+	}
 	if aggregation.Steps != nil {
 		cloned.Steps = make([]AggregationStepValue, len(aggregation.Steps))
 		for i, step := range aggregation.Steps {

@@ -9,6 +9,7 @@ import (
 	adminCache "gateway-api/internal/admin/cache"
 	adminClients "gateway-api/internal/admin/clients"
 	adminCORSConfigs "gateway-api/internal/admin/corsconfigs"
+	adminCORSPolicies "gateway-api/internal/admin/corspolicies"
 	adminInstances "gateway-api/internal/admin/instances"
 	adminIPBlacklist "gateway-api/internal/admin/ipblacklist"
 	adminPermissions "gateway-api/internal/admin/permissions"
@@ -53,6 +54,7 @@ func RegisterAdminRoutes(app *fiber.App, db *pgxpool.Pool, redisClient *redis.Cl
 	adminInstances.RegisterInstanceRoutes(admin.Group("/instances"), db, notifier, healthStore, healthChecker)
 	adminRoutes.RegisterRouteRoutes(admin.Group("/routes"), db, notifier)
 	adminCORSConfigs.RegisterCORSConfigRoutes(admin.Group("/routes"), db, notifier)
+	adminCORSPolicies.RegisterCORSPolicyRoutes(admin.Group("/cors-policies"), db, notifier)
 	adminRateLimits.RegisterRateLimitPolicyRoutes(admin.Group("/rate-limit-policies"), db, notifier)
 	adminIPBlacklist.RegisterIPBlacklistRoutes(admin.Group("/ip-blacklist"), db, ipBlacklistChecker)
 }

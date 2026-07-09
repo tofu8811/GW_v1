@@ -57,6 +57,13 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 	}
 
 	if aggregation, ok := h.configCache.FindAggregation(method, requestPath); ok {
+		origin := strings.TrimSpace(c.Get(fiber.HeaderOrigin))
+		if origin != "" {
+			if err := validateCORSRequest(aggregation.CORS, origin, method); err != nil {
+				return response.Forbidden(c, err.Error())
+			}
+			defer setActualCORSHeaders(c, aggregation.CORS, origin)
+		}
 		return h.handleAggregation(c, aggregation)
 	}
 

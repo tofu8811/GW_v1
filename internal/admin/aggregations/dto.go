@@ -6,27 +6,42 @@ import (
 )
 
 type CreateAggregationRequest struct {
-	Name     string `json:"name"`
-	Path     string `json:"path"`
-	Method   string `json:"method"`
-	IsActive *bool  `json:"is_active"`
+	Name         string  `json:"name"`
+	Path         string  `json:"path"`
+	Method       string  `json:"method"`
+	CORSPolicyID *string `json:"cors_policy_id"`
+	IsActive     *bool   `json:"is_active"`
 }
 
 type UpdateAggregationRequest struct {
-	Name     *string `json:"name"`
-	Path     *string `json:"path"`
-	Method   *string `json:"method"`
-	IsActive *bool   `json:"is_active"`
+	Name         *string      `json:"name"`
+	Path         *string      `json:"path"`
+	Method       *string      `json:"method"`
+	CORSPolicyID NullableUUID `json:"cors_policy_id"`
+	IsActive     *bool        `json:"is_active"`
 }
 
 type AggregationResponse struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Path      string    `json:"path"`
-	Method    string    `json:"method"`
-	IsActive  bool      `json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID           string                     `json:"id"`
+	Name         string                     `json:"name"`
+	Path         string                     `json:"path"`
+	Method       string                     `json:"method"`
+	CORSPolicyID *string                    `json:"cors_policy_id"`
+	CORSPolicy   *CORSPolicySummaryResponse `json:"cors_policy,omitempty"`
+	IsActive     bool                       `json:"is_active"`
+	CreatedAt    time.Time                  `json:"created_at"`
+	UpdatedAt    time.Time                  `json:"updated_at"`
+}
+
+type CORSPolicySummaryResponse struct {
+	ID               string   `json:"id"`
+	Name             string   `json:"name"`
+	AllowedOrigins   []string `json:"allowed_origins"`
+	AllowedMethods   []string `json:"allowed_methods"`
+	AllowedHeaders   []string `json:"allowed_headers"`
+	ExposedHeaders   []string `json:"exposed_headers"`
+	AllowCredentials bool     `json:"allow_credentials"`
+	MaxAge           int      `json:"max_age"`
 }
 
 type CreateAggregationStepRequest struct {

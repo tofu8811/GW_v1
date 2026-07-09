@@ -16,8 +16,21 @@ type Route struct {
 	AuthRequired    bool
 	RequiredScopeID *uuid.UUID
 	RateLimitID     *uuid.UUID
+	CORSPolicyID    *uuid.UUID
+	CORSPolicy      *CORSPolicySummary
 	Priority        int
 	IsActive        bool
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+}
+
+type CORSPolicySummary struct {
+	ID               uuid.UUID
+	Name             string
+	AllowedOrigins   []string
+	AllowedMethods   []string
+	AllowedHeaders   []string
+	ExposedHeaders   []string
+	AllowCredentials bool
+	MaxAge           int
 }

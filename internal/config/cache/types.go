@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	CurrentSchemaVersion = 4 // đánh dấu để rebuild
+	CurrentSchemaVersion = 5
 
 	KeyVersion     = "cfg:version"
 	KeyReload      = "cfg:reload"
@@ -19,6 +19,7 @@ type Config struct {
 	RebuildLockTTL  time.Duration
 	RebuildLockWait time.Duration
 	SchemaVersion   int
+	CORSSource      string
 }
 
 func DefaultConfig() Config {
@@ -28,6 +29,7 @@ func DefaultConfig() Config {
 		RebuildLockTTL:  10 * time.Second,
 		RebuildLockWait: 2 * time.Second,
 		SchemaVersion:   CurrentSchemaVersion,
+		CORSSource:      "policy",
 	}
 }
 
@@ -51,6 +53,7 @@ type CORSValue struct {
 	AllowedOrigins   []string `json:"allowed_origins"`
 	AllowedMethods   []string `json:"allowed_methods"`
 	AllowedHeaders   []string `json:"allowed_headers"`
+	ExposedHeaders   []string `json:"exposed_headers"`
 	AllowCredentials bool     `json:"allow_credentials"`
 	MaxAge           int      `json:"max_age"`
 }
@@ -84,6 +87,7 @@ type AggregationValue struct {
 	Name          string                 `json:"name"`
 	Path          string                 `json:"path"`
 	Method        string                 `json:"method"`
+	CORS          *CORSValue             `json:"cors,omitempty"`
 	Steps         []AggregationStepValue `json:"steps"`
 }
 
@@ -117,14 +121,12 @@ type InstanceValue struct {
 	Weight    int    `json:"weight"`
 }
 
-// ds instance
 type ServiceInstancesValue struct {
 	SchemaVersion int             `json:"schema_version"`
 	ServiceID     string          `json:"service_id"`
 	Items         []InstanceValue `json:"items"`
 }
 
-// dùng cho health check
 type ActiveInstanceValue struct {
 	ServiceID  string
 	InstanceID string
@@ -161,7 +163,6 @@ type PipelineValue struct {
 	Config     json.RawMessage `json:"config"`
 }
 
-// gom toàn bộ dl để lưu vào cache
 type snapshot struct {
 	Services             []ServiceValue
 	InstancesByServiceID map[string][]InstanceValue

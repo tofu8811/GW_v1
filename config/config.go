@@ -32,6 +32,7 @@ type Config struct {
 	ConfigRebuildLockTTL time.Duration
 	ConfigLockWait       time.Duration
 	ConfigSchemaVersion  int
+	CORSSource           string
 
 	HealthCheckInterval      time.Duration
 	HealthProbeTimeout       time.Duration
@@ -95,6 +96,7 @@ func Load() Config {
 		ConfigRebuildLockTTL: durationSeconds("CONFIG_REBUILD_LOCK_TTL_SECONDS", 10*time.Second),
 		ConfigLockWait:       durationSeconds("CONFIG_REBUILD_LOCK_WAIT_SECONDS", 2*time.Second),
 		ConfigSchemaVersion:  schemaVersion,
+		CORSSource:           strings.ToLower(strings.TrimSpace(getEnv("CORS_SOURCE", "policy"))),
 
 		HealthCheckInterval:      healthInterval,
 		HealthProbeTimeout:       durationEnv("HEALTH_PROBE_TIMEOUT", 2*time.Second),

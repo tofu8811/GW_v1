@@ -2,6 +2,7 @@ package aggregations
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 
 	"gateway-api/helper/pagination"
@@ -19,6 +20,7 @@ var ErrAggregationStepDuplicate = errors.New("aggregation step sequence already 
 var ErrServiceUnavailable = errors.New("service_id does not exist or is inactive")
 var ErrDependsOnUnavailable = errors.New("depends_on step does not exist in this aggregation")
 var ErrStepDependsOnSelf = errors.New("step cannot depend on itself")
+var ErrCORSPolicyUnavailable = errors.New("cors_policy_id does not exist or is inactive")
 
 type Repository struct {
 	db *pgxpool.Pool
@@ -29,19 +31,30 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 }
 
 func (r *Repository) Create(ctx context.Context, aggregation *Aggregation) error {
+	if err := r.validateCORSPolicy(ctx, aggregation.CORSPolicyID); err != nil {
+		return err
+	}
 	err := r.db.QueryRow(ctx, `
-		INSERT INTO aggregation_configs (id, name, path, method, is_active)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO aggregation_configs (id, name, path, method, cors_policy_id, is_active)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING created_at, updated_at
-	`, aggregation.ID, aggregation.Name, aggregation.Path, aggregation.Method, aggregation.IsActive).Scan(&aggregation.CreatedAt, &aggregation.UpdatedAt)
+	`, aggregation.ID, aggregation.Name, aggregation.Path, aggregation.Method, aggregation.CORSPolicyID, aggregation.IsActive).Scan(&aggregation.CreatedAt, &aggregation.UpdatedAt)
 	return mapAggregationDBError(err)
 }
 
 func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Aggregation, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT id, name, path, method, is_active, created_at, updated_at
-		FROM aggregation_configs
-		WHERE deleted_at IS NULL
+		SELECT agg.id, agg.name, agg.path, agg.method, agg.cors_policy_id,
+		       cp.id::text, COALESCE(cp.name, ''),
+		       COALESCE(cp.allowed_origins, '{}'::text[]),
+		       COALESCE(cp.allowed_methods, '{}'::text[]),
+		       COALESCE(cp.allowed_headers, '{}'::text[]),
+		       COALESCE(cp.exposed_headers, '{}'::text[]),
+		       COALESCE(cp.allow_credentials, FALSE), COALESCE(cp.max_age, 0),
+		       agg.is_active, agg.created_at, agg.updated_at
+		FROM aggregation_configs agg
+		LEFT JOIN cors_policies cp ON cp.id = agg.cors_policy_id AND cp.is_active = TRUE AND cp.deleted_at IS NULL
+		WHERE agg.deleted_at IS NULL
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2
 	`, p.Limit, p.Offset)
@@ -53,7 +66,7 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Ag
 	items := []Aggregation{}
 	for rows.Next() {
 		var aggregation Aggregation
-		if err := rows.Scan(&aggregation.ID, &aggregation.Name, &aggregation.Path, &aggregation.Method, &aggregation.IsActive, &aggregation.CreatedAt, &aggregation.UpdatedAt); err != nil {
+		if err := scanAggregation(rows, &aggregation); err != nil {
 			return nil, err
 		}
 		items = append(items, aggregation)
@@ -61,6 +74,29 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Ag
 	return items, rows.Err()
 }
 
+type aggregationScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanAggregation(row aggregationScanner, aggregation *Aggregation) error {
+	var corsPolicyID *uuid.UUID
+	var policyID sql.NullString
+	var policy CORSPolicySummary
+	err := row.Scan(&aggregation.ID, &aggregation.Name, &aggregation.Path, &aggregation.Method, &corsPolicyID, &policyID, &policy.Name, &policy.AllowedOrigins, &policy.AllowedMethods, &policy.AllowedHeaders, &policy.ExposedHeaders, &policy.AllowCredentials, &policy.MaxAge, &aggregation.IsActive, &aggregation.CreatedAt, &aggregation.UpdatedAt)
+	if err != nil {
+		return err
+	}
+	aggregation.CORSPolicyID = corsPolicyID
+	if policyID.Valid {
+		parsed, err := uuid.Parse(policyID.String)
+		if err != nil {
+			return err
+		}
+		policy.ID = parsed
+		aggregation.CORSPolicy = &policy
+	}
+	return nil
+}
 func (r *Repository) Count(ctx context.Context) (int64, error) {
 	var total int64
 	err := r.db.QueryRow(ctx, `SELECT count(*) FROM aggregation_configs WHERE deleted_at IS NULL`).Scan(&total)
@@ -69,11 +105,20 @@ func (r *Repository) Count(ctx context.Context) (int64, error) {
 
 func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*Aggregation, error) {
 	var aggregation Aggregation
-	err := r.db.QueryRow(ctx, `
-		SELECT id, name, path, method, is_active, created_at, updated_at
-		FROM aggregation_configs
-		WHERE id = $1 AND deleted_at IS NULL
-	`, id).Scan(&aggregation.ID, &aggregation.Name, &aggregation.Path, &aggregation.Method, &aggregation.IsActive, &aggregation.CreatedAt, &aggregation.UpdatedAt)
+	row := r.db.QueryRow(ctx, `
+		SELECT agg.id, agg.name, agg.path, agg.method, agg.cors_policy_id,
+		       cp.id::text, COALESCE(cp.name, ''),
+		       COALESCE(cp.allowed_origins, '{}'::text[]),
+		       COALESCE(cp.allowed_methods, '{}'::text[]),
+		       COALESCE(cp.allowed_headers, '{}'::text[]),
+		       COALESCE(cp.exposed_headers, '{}'::text[]),
+		       COALESCE(cp.allow_credentials, FALSE), COALESCE(cp.max_age, 0),
+		       agg.is_active, agg.created_at, agg.updated_at
+		FROM aggregation_configs agg
+		LEFT JOIN cors_policies cp ON cp.id = agg.cors_policy_id AND cp.is_active = TRUE AND cp.deleted_at IS NULL
+		WHERE agg.id = $1 AND agg.deleted_at IS NULL
+	`, id)
+	err := scanAggregation(row, &aggregation)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrAggregationNotFound
 	}
@@ -84,12 +129,15 @@ func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*Aggregation, 
 }
 
 func (r *Repository) Update(ctx context.Context, aggregation *Aggregation) error {
+	if err := r.validateCORSPolicy(ctx, aggregation.CORSPolicyID); err != nil {
+		return err
+	}
 	err := r.db.QueryRow(ctx, `
 		UPDATE aggregation_configs
-		SET name = $2, path = $3, method = $4, is_active = $5
+		SET name = $2, path = $3, method = $4, cors_policy_id = $5, is_active = $6
 		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING updated_at
-	`, aggregation.ID, aggregation.Name, aggregation.Path, aggregation.Method, aggregation.IsActive).Scan(&aggregation.UpdatedAt)
+	`, aggregation.ID, aggregation.Name, aggregation.Path, aggregation.Method, aggregation.CORSPolicyID, aggregation.IsActive).Scan(&aggregation.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrAggregationNotFound
 	}
@@ -210,6 +258,20 @@ func (r *Repository) DeleteStep(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+func (r *Repository) validateCORSPolicy(ctx context.Context, corsPolicyID *uuid.UUID) error {
+	if corsPolicyID == nil {
+		return nil
+	}
+	var exists bool
+	err := r.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM cors_policies WHERE id = $1 AND is_active = TRUE AND deleted_at IS NULL)`, *corsPolicyID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrCORSPolicyUnavailable
+	}
+	return nil
+}
 func (r *Repository) validateAggregation(ctx context.Context, id uuid.UUID) error {
 	var exists bool
 	err := r.db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM aggregation_configs WHERE id = $1 AND is_active = TRUE AND deleted_at IS NULL)`, id).Scan(&exists)

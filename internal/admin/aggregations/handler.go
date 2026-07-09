@@ -229,7 +229,11 @@ func (h *Handler) aggregationFromCreate(req CreateAggregationRequest) (*Aggregat
 	if err != nil {
 		return nil, err
 	}
-	return &Aggregation{ID: id, Name: name, Path: path, Method: method, IsActive: boolValue(req.IsActive, true)}, nil
+	corsPolicyID, err := validation.ParseOptionalUUID("cors_policy_id", req.CORSPolicyID)
+	if err != nil {
+		return nil, err
+	}
+	return &Aggregation{ID: id, Name: name, Path: path, Method: method, CORSPolicyID: corsPolicyID, IsActive: boolValue(req.IsActive, true)}, nil
 }
 
 func applyAggregationUpdate(aggregation *Aggregation, req UpdateAggregationRequest) error {
@@ -253,6 +257,13 @@ func applyAggregationUpdate(aggregation *Aggregation, req UpdateAggregationReque
 			return err
 		}
 		aggregation.Method = method
+	}
+	if req.CORSPolicyID.Set {
+		corsPolicyID, err := validation.ParseOptionalUUID("cors_policy_id", req.CORSPolicyID.Value)
+		if err != nil {
+			return err
+		}
+		aggregation.CORSPolicyID = corsPolicyID
 	}
 	if req.IsActive != nil {
 		aggregation.IsActive = *req.IsActive
@@ -406,9 +417,17 @@ func boolValue(value *bool, fallback bool) bool {
 }
 
 func toAggregationResponse(aggregation Aggregation) AggregationResponse {
-	return AggregationResponse{ID: aggregation.ID.String(), Name: aggregation.Name, Path: aggregation.Path, Method: aggregation.Method, IsActive: aggregation.IsActive, CreatedAt: aggregation.CreatedAt, UpdatedAt: aggregation.UpdatedAt}
+	var corsPolicyID *string
+	if aggregation.CORSPolicyID != nil {
+		value := aggregation.CORSPolicyID.String()
+		corsPolicyID = &value
+	}
+	var corsPolicy *CORSPolicySummaryResponse
+	if aggregation.CORSPolicy != nil {
+		corsPolicy = &CORSPolicySummaryResponse{ID: aggregation.CORSPolicy.ID.String(), Name: aggregation.CORSPolicy.Name, AllowedOrigins: aggregation.CORSPolicy.AllowedOrigins, AllowedMethods: aggregation.CORSPolicy.AllowedMethods, AllowedHeaders: aggregation.CORSPolicy.AllowedHeaders, ExposedHeaders: aggregation.CORSPolicy.ExposedHeaders, AllowCredentials: aggregation.CORSPolicy.AllowCredentials, MaxAge: aggregation.CORSPolicy.MaxAge}
+	}
+	return AggregationResponse{ID: aggregation.ID.String(), Name: aggregation.Name, Path: aggregation.Path, Method: aggregation.Method, CORSPolicyID: corsPolicyID, CORSPolicy: corsPolicy, IsActive: aggregation.IsActive, CreatedAt: aggregation.CreatedAt, UpdatedAt: aggregation.UpdatedAt}
 }
-
 func toStepResponse(step AggregationStep) AggregationStepResponse {
 	var dependsOn *string
 	if step.DependsOn != nil {
@@ -428,7 +447,7 @@ func handleDBError(c *fiber.Ctx, err error) error {
 		return response.Conflict(c, "aggregation already exists")
 	case errors.Is(err, ErrAggregationStepDuplicate):
 		return response.Conflict(c, "aggregation step sequence already exists")
-	case errors.Is(err, ErrServiceUnavailable), errors.Is(err, ErrDependsOnUnavailable), errors.Is(err, ErrStepDependsOnSelf):
+	case errors.Is(err, ErrServiceUnavailable), errors.Is(err, ErrDependsOnUnavailable), errors.Is(err, ErrStepDependsOnSelf), errors.Is(err, ErrCORSPolicyUnavailable):
 		return response.Error(c, fiber.StatusUnprocessableEntity, "invalid_reference", err.Error())
 	default:
 		return response.InternalServerError(c)
