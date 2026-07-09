@@ -182,6 +182,9 @@ func (h *Handler) Delete(c *fiber.Ctx) error {
 	if errors.Is(err, ErrRateLimitPolicyNotFound) {
 		return response.NotFound(c, "rate limit policy not found")
 	}
+	if errors.Is(err, ErrRateLimitPolicyInUse) {
+		return response.Conflict(c, "rate limit policy is still used by active routes or aggregations")
+	}
 	if err != nil {
 		return handleDBError(c, err)
 	}

@@ -54,7 +54,7 @@ func (l *Limiter) Allow(ctx context.Context, req Request) (Result, error) {
 	nowUnix := now.Unix()
 	windowStart := nowUnix / windowSeconds * windowSeconds
 	resetAt := windowStart + windowSeconds
-	key := Key(policy, req.Identifier, windowStart)
+	key := KeyWithScope(policy, req.Identifier, req.Namespace, req.Subject, windowStart)
 
 	count, err := l.redis.Incr(ctx, key).Result()
 	if err != nil {
@@ -92,5 +92,15 @@ func (l *Limiter) Allow(ctx context.Context, req Request) (Result, error) {
 }
 
 func Key(policy Policy, identifier string, windowStart int64) string {
-	return fmt.Sprintf("rl:%s:%s:%s:%d", policy.LimitType, policy.ID, identifier, windowStart)
+	return KeyWithScope(policy, identifier, "", "", windowStart)
+}
+
+func KeyWithScope(policy Policy, identifier string, namespace string, subject string, windowStart int64) string {
+	if strings.TrimSpace(namespace) == "" {
+		return fmt.Sprintf("rl:%s:%s:%s:%d", policy.LimitType, policy.ID, identifier, windowStart)
+	}
+	if strings.TrimSpace(subject) == "" {
+		return fmt.Sprintf("rl:%s:%s:%s:%s:%d", namespace, policy.LimitType, policy.ID, identifier, windowStart)
+	}
+	return fmt.Sprintf("rl:%s:%s:%s:%s:%s:%d", namespace, policy.LimitType, policy.ID, subject, identifier, windowStart)
 }

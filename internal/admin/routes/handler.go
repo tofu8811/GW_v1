@@ -287,6 +287,24 @@ func toResponse(route Route) RouteResponse {
 		value := route.RateLimitID.String()
 		rateLimitID = &value
 	}
+	var corsPolicyID *string
+	if route.CORSPolicyID != nil {
+		value := route.CORSPolicyID.String()
+		corsPolicyID = &value
+	}
+	var corsPolicy *CORSPolicySummaryResponse
+	if route.CORSPolicy != nil {
+		corsPolicy = &CORSPolicySummaryResponse{
+			ID:               route.CORSPolicy.ID.String(),
+			Name:             route.CORSPolicy.Name,
+			AllowedOrigins:   route.CORSPolicy.AllowedOrigins,
+			AllowedMethods:   route.CORSPolicy.AllowedMethods,
+			AllowedHeaders:   route.CORSPolicy.AllowedHeaders,
+			ExposedHeaders:   route.CORSPolicy.ExposedHeaders,
+			AllowCredentials: route.CORSPolicy.AllowCredentials,
+			MaxAge:           route.CORSPolicy.MaxAge,
+		}
+	}
 
 	return RouteResponse{
 		ID:              route.ID.String(),
@@ -298,15 +316,16 @@ func toResponse(route Route) RouteResponse {
 		AuthRequired:    route.AuthRequired,
 		RequiredScopeID: requiredScopeID,
 		RateLimitID:     rateLimitID,
+		CORSPolicyID:    corsPolicyID,
+		CORSPolicy:      corsPolicy,
 		Priority:        route.Priority,
 		IsActive:        route.IsActive,
 		CreatedAt:       route.CreatedAt,
 		UpdatedAt:       route.UpdatedAt,
 	}
 }
-
 func handleDBError(c *fiber.Ctx, err error) error {
-	if errors.Is(err, ErrRequiredScopeUnavailable) || errors.Is(err, ErrRequiredScopeServiceMismatch) {
+	if errors.Is(err, ErrRequiredScopeUnavailable) || errors.Is(err, ErrRequiredScopeServiceMismatch) || errors.Is(err, ErrCORSPolicyUnavailable) {
 		return response.Error(c, fiber.StatusUnprocessableEntity, "invalid_reference", err.Error())
 	}
 	if apiErr, ok := dberror.MapDBError(err); ok {
