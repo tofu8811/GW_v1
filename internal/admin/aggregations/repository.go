@@ -149,7 +149,7 @@ func (r *Repository) CreateStep(ctx context.Context, step *AggregationStep) erro
 	}
 	defer tx.Rollback(ctx)
 
-	if err := r.validateAggregation(ctx, tx, step.AggregationID); err != nil {
+	if err := r.validateAggregationExists(ctx, tx, step.AggregationID); err != nil {
 		return err
 	}
 	if err := r.validateService(ctx, tx, step.ServiceID); err != nil {
@@ -173,7 +173,7 @@ func (r *Repository) CreateStep(ctx context.Context, step *AggregationStep) erro
 }
 
 func (r *Repository) FindSteps(ctx context.Context, aggregationID uuid.UUID) ([]AggregationStep, error) {
-	if err := r.validateAggregation(ctx, r.db, aggregationID); err != nil {
+	if err := r.validateAggregationExists(ctx, r.db, aggregationID); err != nil {
 		return nil, err
 	}
 	return r.findSteps(ctx, r.db, aggregationID, false)
@@ -202,7 +202,7 @@ func (r *Repository) UpdateStep(ctx context.Context, step *AggregationStep) erro
 	}
 	defer tx.Rollback(ctx)
 
-	if err := r.validateAggregation(ctx, tx, step.AggregationID); err != nil {
+	if err := r.validateAggregationExists(ctx, tx, step.AggregationID); err != nil {
 		return err
 	}
 	if err := r.validateService(ctx, tx, step.ServiceID); err != nil {
@@ -283,6 +283,17 @@ func (r *Repository) validateCORSPolicy(ctx context.Context, q dbQuerier, corsPo
 	return nil
 }
 
+func (r *Repository) validateAggregationExists(ctx context.Context, q dbQuerier, id uuid.UUID) error {
+	var exists bool
+	err := q.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM aggregation_configs WHERE id = $1 AND deleted_at IS NULL)`, id).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return ErrAggregationNotFound
+	}
+	return nil
+}
 func (r *Repository) validateAggregation(ctx context.Context, q dbQuerier, id uuid.UUID) error {
 	var exists bool
 	err := q.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM aggregation_configs WHERE id = $1 AND is_active = TRUE AND deleted_at IS NULL)`, id).Scan(&exists)
