@@ -31,7 +31,7 @@ VALUES
         1,
         NULL,
         TRUE,
-        '{"method":"GET","path":"/products"}',
+        '{"method":"GET","path":"/api/products"}',
         '{"target":"products"}'
     ),
     (
