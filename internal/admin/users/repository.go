@@ -79,3 +79,35 @@ func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*User, error) 
 	}
 	return &item, err
 }
+
+func (r *Repository) Update(ctx context.Context, user *User, passwordHash *string) error {
+	err := r.db.QueryRow(ctx, `
+		UPDATE users
+		SET username = $2,
+		    email = $3,
+		    role_id = $4,
+		    is_active = $5,
+		    password_hash = COALESCE($6, password_hash)
+		WHERE id = $1 AND deleted_at IS NULL
+		RETURNING updated_at
+	`, user.ID, user.Username, user.Email, user.RoleID, user.IsActive, passwordHash).Scan(&user.UpdatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrUserNotFound
+	}
+	return err
+}
+
+func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
+	result, err := r.db.Exec(ctx, `
+		UPDATE users
+		SET is_active = FALSE, deleted_at = now()
+		WHERE id = $1 AND deleted_at IS NULL
+	`, id)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
