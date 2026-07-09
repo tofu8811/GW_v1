@@ -23,6 +23,8 @@ type Config struct {
 	RedisPass   string
 	RedisDB     int
 
+	TrustedProxies []string
+
 	JWTSecret     string
 	JWTAccessTTL  time.Duration
 	JWTRefreshTTL time.Duration
@@ -86,6 +88,8 @@ func Load() Config {
 		RedisAddr:   getEnv("REDIS_ADDR", "localhost:6379"),
 		RedisPass:   getEnv("REDIS_PASSWORD", ""),
 		RedisDB:     redisDB,
+
+		TrustedProxies: splitCSV(getEnv("TRUSTED_PROXIES", "")),
 
 		JWTSecret:     getEnv("JWT_SECRET", defaultJWTSecret),
 		JWTAccessTTL:  jwtAccessTTL,
@@ -193,6 +197,19 @@ func getEnv(key string, fallback string) string {
 	return value
 }
 
+func splitCSV(value string) []string {
+	parts := strings.Split(value, ",")
+	items := make([]string, 0, len(parts))
+
+	for _, part := range parts {
+		item := strings.TrimSpace(part)
+		if item != "" {
+			items = append(items, item)
+		}
+	}
+
+	return items
+}
 func getDurationEnv(key string, fallback time.Duration) time.Duration {
 	value := os.Getenv(key)
 	if value == "" {

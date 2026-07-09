@@ -1,0 +1,7 @@
+.git
+.gocache*
+.tmp*
+bin
+tmp
+logs
+*.docx

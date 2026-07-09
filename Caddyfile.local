@@ -1,0 +1,17 @@
+http://localhost {
+	reverse_proxy gateway:8080 {
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Real-IP {remote_host}
+	}
+}
+
+https://localhost {
+	tls internal
+
+	reverse_proxy gateway:8080 {
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Real-IP {remote_host}
+	}
+}

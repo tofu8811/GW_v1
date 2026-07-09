@@ -1,4 +1,68 @@
-﻿services:
+services:
+  gateway:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: gateway-api
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      APP_PORT: ${APP_PORT:-8080}
+      GATEWAY_NODE: ${GATEWAY_NODE:-gateway-api-1}
+      LOG_FILE: ${LOG_FILE:-logs/gateway.jsonl}
+      DATABASE_URL: postgres://${POSTGRES_USER:-gateway_user}:${POSTGRES_PASSWORD:-gateway_password}@postgres:5432/${POSTGRES_DB:-gateway_db}?sslmode=disable
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      CONFIG_SCHEMA_VERSION: ${CONFIG_SCHEMA_VERSION:-2}
+      CONFIG_POLL_INTERVAL_SECONDS: ${CONFIG_POLL_INTERVAL_SECONDS:-20}
+      CONFIG_TTL_SECONDS: ${CONFIG_TTL_SECONDS:-0}
+      CONFIG_REBUILD_LOCK_TTL_SECONDS: ${CONFIG_REBUILD_LOCK_TTL_SECONDS:-10}
+      CONFIG_REBUILD_LOCK_WAIT_SECONDS: ${CONFIG_REBUILD_LOCK_WAIT_SECONDS:-2}
+      CORS_SOURCE: ${CORS_SOURCE:-policy}
+      HEALTH_CHECK_INTERVAL: ${HEALTH_CHECK_INTERVAL:-10s}
+      HEALTH_PROBE_TIMEOUT: ${HEALTH_PROBE_TIMEOUT:-2s}
+      HEALTH_UNHEALTHY_THRESHOLD: ${HEALTH_UNHEALTHY_THRESHOLD:-3}
+      HEALTH_HEALTHY_THRESHOLD: ${HEALTH_HEALTHY_THRESHOLD:-2}
+      HEALTH_KEY_TTL: ${HEALTH_KEY_TTL:-30s}
+      BREAKER_FAILURE_THRESHOLD: ${BREAKER_FAILURE_THRESHOLD:-5}
+      BREAKER_OPEN_TIMEOUT: ${BREAKER_OPEN_TIMEOUT:-15s}
+      BREAKER_HALFOPEN_MAX: ${BREAKER_HALFOPEN_MAX:-1}
+      JWT_SECRET: ${JWT_SECRET:-change_me_in_local_env}
+      JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-15m}
+      JWT_REFRESH_TOKEN_TTL: ${JWT_REFRESH_TOKEN_TTL:-168h}
+      RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-gateway}:${RABBITMQ_DEFAULT_PASS:-gateway_password}@rabbitmq:5672/
+      RABBITMQ_LOG_EXCHANGE: ${RABBITMQ_LOG_EXCHANGE:-gateway.logs.exchange}
+      RABBITMQ_LOG_QUEUE: ${RABBITMQ_LOG_QUEUE:-gateway.logs.queue}
+      RABBITMQ_LOG_ROUTING_KEY: ${RABBITMQ_LOG_ROUTING_KEY:-gateway.request.completed}
+      RABBITMQ_LOG_DLX: ${RABBITMQ_LOG_DLX:-gateway.logs.dlx}
+      RABBITMQ_LOG_DLQ: ${RABBITMQ_LOG_DLQ:-gateway.logs.dlq}
+      RABBITMQ_PUBLISH_TIMEOUT: ${RABBITMQ_PUBLISH_TIMEOUT:-500ms}
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_LOG_INDEX_PREFIX: ${ELASTICSEARCH_LOG_INDEX_PREFIX:-gateway-logs}
+    volumes:
+      - ../logs:/app/logs
+    expose:
+      - "8080"
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: gateway-caddy
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ${CADDY_CONFIG_FILE:-../Caddyfile.local}:/etc/caddy/Caddyfile:ro
+      - gateway_caddy_data:/data
+      - gateway_caddy_config:/config
+    depends_on:
+      - gateway
   postgres:
     image: postgres:16
     container_name: gateway-postgres
@@ -68,6 +132,8 @@
       - elasticsearch
 
 volumes:
+  gateway_caddy_data:
+  gateway_caddy_config:
   gateway_postgres_data:
   gateway_pgadmin_data:
   gateway_redis_data:

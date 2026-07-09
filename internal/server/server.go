@@ -18,11 +18,22 @@ type Server struct {
 	Logger *slog.Logger
 }
 
-func New(logger *slog.Logger, healthHandler *health.Handler, requestLogSink appmiddleware.RequestLogSink, appEnv string, gatewayNode string) *Server {
-	app := fiber.New(fiber.Config{
+type Config struct {
+	TrustedProxies []string
+}
+
+func New(logger *slog.Logger, healthHandler *health.Handler, requestLogSink appmiddleware.RequestLogSink, appEnv string, gatewayNode string, cfg Config) *Server {
+	fiberConfig := fiber.Config{
 		AppName:               "API Gateway",
 		DisableStartupMessage: false,
-	})
+	}
+	if len(cfg.TrustedProxies) > 0 {
+		fiberConfig.EnableTrustedProxyCheck = true
+		fiberConfig.TrustedProxies = cfg.TrustedProxies
+		fiberConfig.ProxyHeader = fiber.HeaderXForwardedFor
+	}
+
+	app := fiber.New(fiberConfig)
 
 	app.Use(requestid.New())
 	app.Use(appmiddleware.LoggerWithSink(requestLogSink, logger, appEnv, gatewayNode))

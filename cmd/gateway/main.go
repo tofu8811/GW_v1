@@ -104,7 +104,9 @@ func main() {
 	upstreamHealthFilter := upstreamhealth.NewHealthFilter(upstreamHealthStore, breakers)
 
 	healthHandler := health.NewHandler(db, rdb, cacheStore.Ready)
-	srv := server.New(logg, healthHandler, requestLogSink, cfg.AppEnv, cfg.GatewayNode)
+	srv := server.New(logg, healthHandler, requestLogSink, cfg.AppEnv, cfg.GatewayNode, server.Config{
+		TrustedProxies: cfg.TrustedProxies,
+	})
 	ipBlacklistChecker := ipblacklist.NewChecker(db, rdb, logg)
 	if err := ipBlacklistChecker.Reload(ctx); err != nil {
 		logg.Error("failed to warm ip blacklist cache", "error", err)
