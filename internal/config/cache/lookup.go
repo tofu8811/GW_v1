@@ -60,6 +60,18 @@ func (s *Store) FindAggregation(method string, path string) (*AggregationValue, 
 
 	return cloneAggregation(aggregation), true
 }
+func (s *Store) FindAggregationCandidates(method string) []AggregationValue {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	aggregations := make([]AggregationValue, 0, len(s.aggregations))
+	for _, aggregation := range s.aggregations {
+		if aggregation.Method == method || aggregation.Method == "ANY" {
+			aggregations = append(aggregations, *cloneAggregation(aggregation))
+		}
+	}
+	return aggregations
+}
 func (s *Store) FindAPIKeyByHash(hash string) (APIKeyValue, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

@@ -25,7 +25,7 @@ func (h *Handler) handleCORSPreflight(c *fiber.Ctx, path string) error {
 		return response.BadRequest(c, "invalid CORS preflight request")
 	}
 
-	if aggregation, ok := h.configCache.FindAggregation(requestedMethod, path); ok {
+	if aggregation, _, ok := h.findAggregation(path, requestedMethod); ok {
 		if err := validateCORSRequest(aggregation.CORS, origin, requestedMethod); err != nil {
 			return response.Forbidden(c, err.Error())
 		}

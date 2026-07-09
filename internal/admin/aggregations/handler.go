@@ -229,11 +229,23 @@ func (h *Handler) aggregationFromCreate(req CreateAggregationRequest) (*Aggregat
 	if err != nil {
 		return nil, err
 	}
+	authRequired := boolValue(req.AuthRequired, true)
+	requiredScopeID, err := validation.ParseOptionalUUID("required_scope_id", req.RequiredScopeID)
+	if err != nil {
+		return nil, err
+	}
+	if requiredScopeID != nil && !authRequired {
+		return nil, validation.FieldError{Field: "auth_required", Message: "must be true when required_scope_id is set"}
+	}
+	rateLimitID, err := validation.ParseOptionalUUID("rate_limit_id", req.RateLimitID)
+	if err != nil {
+		return nil, err
+	}
 	corsPolicyID, err := validation.ParseOptionalUUID("cors_policy_id", req.CORSPolicyID)
 	if err != nil {
 		return nil, err
 	}
-	return &Aggregation{ID: id, Name: name, Path: path, Method: method, CORSPolicyID: corsPolicyID, IsActive: boolValue(req.IsActive, true)}, nil
+	return &Aggregation{ID: id, Name: name, Path: path, Method: method, AuthRequired: authRequired, RequiredScopeID: requiredScopeID, RateLimitID: rateLimitID, CORSPolicyID: corsPolicyID, IsActive: boolValue(req.IsActive, false)}, nil
 }
 
 func applyAggregationUpdate(aggregation *Aggregation, req UpdateAggregationRequest) error {
@@ -257,6 +269,26 @@ func applyAggregationUpdate(aggregation *Aggregation, req UpdateAggregationReque
 			return err
 		}
 		aggregation.Method = method
+	}
+	if req.AuthRequired != nil {
+		aggregation.AuthRequired = *req.AuthRequired
+	}
+	if req.RequiredScopeID.Set {
+		requiredScopeID, err := validation.ParseOptionalUUID("required_scope_id", req.RequiredScopeID.Value)
+		if err != nil {
+			return err
+		}
+		aggregation.RequiredScopeID = requiredScopeID
+	}
+	if aggregation.RequiredScopeID != nil && !aggregation.AuthRequired {
+		return validation.FieldError{Field: "auth_required", Message: "must be true when required_scope_id is set"}
+	}
+	if req.RateLimitID.Set {
+		rateLimitID, err := validation.ParseOptionalUUID("rate_limit_id", req.RateLimitID.Value)
+		if err != nil {
+			return err
+		}
+		aggregation.RateLimitID = rateLimitID
 	}
 	if req.CORSPolicyID.Set {
 		corsPolicyID, err := validation.ParseOptionalUUID("cors_policy_id", req.CORSPolicyID.Value)
@@ -417,6 +449,16 @@ func boolValue(value *bool, fallback bool) bool {
 }
 
 func toAggregationResponse(aggregation Aggregation) AggregationResponse {
+	var requiredScopeID *string
+	if aggregation.RequiredScopeID != nil {
+		value := aggregation.RequiredScopeID.String()
+		requiredScopeID = &value
+	}
+	var rateLimitID *string
+	if aggregation.RateLimitID != nil {
+		value := aggregation.RateLimitID.String()
+		rateLimitID = &value
+	}
 	var corsPolicyID *string
 	if aggregation.CORSPolicyID != nil {
 		value := aggregation.CORSPolicyID.String()
@@ -426,7 +468,7 @@ func toAggregationResponse(aggregation Aggregation) AggregationResponse {
 	if aggregation.CORSPolicy != nil {
 		corsPolicy = &CORSPolicySummaryResponse{ID: aggregation.CORSPolicy.ID.String(), Name: aggregation.CORSPolicy.Name, AllowedOrigins: aggregation.CORSPolicy.AllowedOrigins, AllowedMethods: aggregation.CORSPolicy.AllowedMethods, AllowedHeaders: aggregation.CORSPolicy.AllowedHeaders, ExposedHeaders: aggregation.CORSPolicy.ExposedHeaders, AllowCredentials: aggregation.CORSPolicy.AllowCredentials, MaxAge: aggregation.CORSPolicy.MaxAge}
 	}
-	return AggregationResponse{ID: aggregation.ID.String(), Name: aggregation.Name, Path: aggregation.Path, Method: aggregation.Method, CORSPolicyID: corsPolicyID, CORSPolicy: corsPolicy, IsActive: aggregation.IsActive, CreatedAt: aggregation.CreatedAt, UpdatedAt: aggregation.UpdatedAt}
+	return AggregationResponse{ID: aggregation.ID.String(), Name: aggregation.Name, Path: aggregation.Path, Method: aggregation.Method, AuthRequired: aggregation.AuthRequired, RequiredScopeID: requiredScopeID, RateLimitID: rateLimitID, CORSPolicyID: corsPolicyID, CORSPolicy: corsPolicy, IsActive: aggregation.IsActive, CreatedAt: aggregation.CreatedAt, UpdatedAt: aggregation.UpdatedAt}
 }
 func toStepResponse(step AggregationStep) AggregationStepResponse {
 	var dependsOn *string
@@ -447,7 +489,7 @@ func handleDBError(c *fiber.Ctx, err error) error {
 		return response.Conflict(c, "aggregation already exists")
 	case errors.Is(err, ErrAggregationStepDuplicate):
 		return response.Conflict(c, "aggregation step sequence already exists")
-	case errors.Is(err, ErrServiceUnavailable), errors.Is(err, ErrDependsOnUnavailable), errors.Is(err, ErrStepDependsOnSelf), errors.Is(err, ErrCORSPolicyUnavailable):
+	case errors.Is(err, ErrServiceUnavailable), errors.Is(err, ErrDependsOnUnavailable), errors.Is(err, ErrStepDependsOnSelf), errors.Is(err, ErrCORSPolicyUnavailable), errors.Is(err, ErrRequiredScopeUnavailable), errors.Is(err, ErrRateLimitUnavailable), errors.Is(err, ErrAggregationActiveWithoutSteps), errors.Is(err, ErrDependsOnSequenceInvalid), errors.Is(err, ErrDependsOnCycle), errors.Is(err, ErrResponseTargetDuplicate):
 		return response.Error(c, fiber.StatusUnprocessableEntity, "invalid_reference", err.Error())
 	default:
 		return response.InternalServerError(c)

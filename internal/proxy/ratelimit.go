@@ -61,6 +61,43 @@ func (r *RateLimiter) Allow(c *fiber.Ctx, route *UpstreamRoute) (bool, error) {
 	return true, nil
 }
 
+func (r *RateLimiter) AllowAggregation(c *fiber.Ctx, aggregation *configcache.AggregationValue) (bool, error) {
+	if r == nil || r.limiter == nil || aggregation == nil || aggregation.RateLimit == nil {
+		return true, nil
+	}
+	if c.Method() == fiber.MethodOptions {
+		return true, nil
+	}
+
+	policy := aggregation.RateLimit
+	result, err := r.limiter.Allow(c.Context(), ratelimit.Request{
+		Policy:     policyFromCache(policy),
+		Identifier: c.IP(),
+		Namespace:  "aggregation",
+		Subject:    aggregation.ID,
+	})
+	if err != nil {
+		if errors.Is(err, ratelimit.ErrUnsupportedPolicy) {
+			r.logWarn("aggregation rate limit policy type is not enforced yet", "limit_type", policy.LimitType, "policy_id", policy.ID, "aggregation_id", aggregation.ID)
+			return true, nil
+		}
+		if errors.Is(err, ratelimit.ErrInvalidPolicy) || errors.Is(err, ratelimit.ErrNilPolicy) || errors.Is(err, ratelimit.ErrMissingIdentifier) {
+			r.logWarn("invalid aggregation rate limit policy config", "error", err, "policy_id", policy.ID, "max_requests", policy.MaxRequests, "window_seconds", policy.WindowSeconds, "aggregation_id", aggregation.ID)
+			return true, nil
+		}
+
+		r.logError("redis aggregation rate limit check failed; allowing request", "error", err, "aggregation_id", aggregation.ID)
+		return true, nil
+	}
+
+	setRateLimitHeaders(c, result)
+	if !result.Allowed {
+		c.Set(fiber.HeaderRetryAfter, strconv.FormatInt(result.RetryAfter, 10))
+		return false, response.Error(c, fiber.StatusTooManyRequests, "rate_limit_exceeded", "Too many requests")
+	}
+
+	return true, nil
+}
 func policyFromCache(policy *configcache.RateLimitPolicyValue) ratelimit.Policy {
 	if policy == nil {
 		return ratelimit.Policy{}

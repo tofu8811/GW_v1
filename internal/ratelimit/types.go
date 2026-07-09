@@ -14,6 +14,8 @@ type Policy struct {
 type Request struct {
 	Policy     Policy
 	Identifier string
+	Namespace  string
+	Subject    string
 	Now        time.Time
 }
 

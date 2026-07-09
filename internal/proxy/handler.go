@@ -56,7 +56,7 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 		return h.handleCORSPreflight(c, requestPath)
 	}
 
-	if aggregation, ok := h.configCache.FindAggregation(method, requestPath); ok {
+	if aggregation, params, ok := h.findAggregation(requestPath, method); ok {
 		origin := strings.TrimSpace(c.Get(fiber.HeaderOrigin))
 		if origin != "" {
 			if err := validateCORSRequest(aggregation.CORS, origin, method); err != nil {
@@ -64,6 +64,28 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 			}
 			defer setActualCORSHeaders(c, aggregation.CORS, origin)
 		}
+		if aggregation.AuthRequired {
+			if h.authenticator == nil {
+				h.logger.Error("aggregation requires authentication but no authenticator is configured", "aggregation_id", aggregation.ID)
+				return response.InternalServerError(c)
+			}
+			if err := h.authenticator.Authenticate(c, aggregation.RequiredScopeID); err != nil {
+				return err
+			}
+			if c.Response().StatusCode() >= fiber.StatusBadRequest {
+				return nil
+			}
+		}
+		if h.rateLimiter != nil {
+			allowed, err := h.rateLimiter.AllowAggregation(c, aggregation)
+			if err != nil {
+				return err
+			}
+			if !allowed {
+				return nil
+			}
+		}
+		c.Locals("aggregation_path_params", params)
 		return h.handleAggregation(c, aggregation)
 	}
 
@@ -124,6 +146,19 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 	return h.forwardWithRetry(c, route, requestPath, params, startedAt)
 }
 
+func (h *Handler) findAggregation(path string, method string) (*configcache.AggregationValue, map[string]string, bool) {
+	if aggregation, ok := h.configCache.FindAggregation(method, path); ok {
+		return aggregation, map[string]string{}, true
+	}
+	candidates := h.configCache.FindAggregationCandidates(method)
+	for i := range candidates {
+		params, ok := matchPath(candidates[i].Path, path)
+		if ok {
+			return &candidates[i], params, true
+		}
+	}
+	return nil, nil, false
+}
 func (h *Handler) findRoute(ctx context.Context, path string, method string) (*UpstreamRoute, map[string]string, error) {
 	candidates := h.configCache.FindCandidates(method)
 

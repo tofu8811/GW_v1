@@ -6,31 +6,40 @@ import (
 )
 
 type CreateAggregationRequest struct {
-	Name         string  `json:"name"`
-	Path         string  `json:"path"`
-	Method       string  `json:"method"`
-	CORSPolicyID *string `json:"cors_policy_id"`
-	IsActive     *bool   `json:"is_active"`
+	Name            string  `json:"name"`
+	Path            string  `json:"path"`
+	Method          string  `json:"method"`
+	AuthRequired    *bool   `json:"auth_required"`
+	RequiredScopeID *string `json:"required_scope_id"`
+	RateLimitID     *string `json:"rate_limit_id"`
+	CORSPolicyID    *string `json:"cors_policy_id"`
+	IsActive        *bool   `json:"is_active"`
 }
 
 type UpdateAggregationRequest struct {
-	Name         *string      `json:"name"`
-	Path         *string      `json:"path"`
-	Method       *string      `json:"method"`
-	CORSPolicyID NullableUUID `json:"cors_policy_id"`
-	IsActive     *bool        `json:"is_active"`
+	Name            *string      `json:"name"`
+	Path            *string      `json:"path"`
+	Method          *string      `json:"method"`
+	AuthRequired    *bool        `json:"auth_required"`
+	RequiredScopeID NullableUUID `json:"required_scope_id"`
+	RateLimitID     NullableUUID `json:"rate_limit_id"`
+	CORSPolicyID    NullableUUID `json:"cors_policy_id"`
+	IsActive        *bool        `json:"is_active"`
 }
 
 type AggregationResponse struct {
-	ID           string                     `json:"id"`
-	Name         string                     `json:"name"`
-	Path         string                     `json:"path"`
-	Method       string                     `json:"method"`
-	CORSPolicyID *string                    `json:"cors_policy_id"`
-	CORSPolicy   *CORSPolicySummaryResponse `json:"cors_policy,omitempty"`
-	IsActive     bool                       `json:"is_active"`
-	CreatedAt    time.Time                  `json:"created_at"`
-	UpdatedAt    time.Time                  `json:"updated_at"`
+	ID              string                     `json:"id"`
+	Name            string                     `json:"name"`
+	Path            string                     `json:"path"`
+	Method          string                     `json:"method"`
+	AuthRequired    bool                       `json:"auth_required"`
+	RequiredScopeID *string                    `json:"required_scope_id"`
+	RateLimitID     *string                    `json:"rate_limit_id"`
+	CORSPolicyID    *string                    `json:"cors_policy_id"`
+	CORSPolicy      *CORSPolicySummaryResponse `json:"cors_policy,omitempty"`
+	IsActive        bool                       `json:"is_active"`
+	CreatedAt       time.Time                  `json:"created_at"`
+	UpdatedAt       time.Time                  `json:"updated_at"`
 }
 
 type CORSPolicySummaryResponse struct {

@@ -249,9 +249,14 @@ func readAggregations(ctx context.Context, tx pgx.Tx, schemaVersion int, corsSou
 	}
 	rows, err := tx.Query(ctx, `
 		SELECT agg.id::text, agg.name, agg.path, agg.method,
+		       agg.auth_required, agg.required_scope_id::text, agg.rate_limit_id::text,
+		       rlp.id::text, COALESCE(rlp.name, ''), COALESCE(rlp.limit_type, ''),
+		       COALESCE(rlp.max_requests, 0), COALESCE(rlp.window_seconds, 0),
+		       agg.cors_policy_id::text,
 		       `+corsIDExpr+`, `+corsOriginsExpr+`, `+corsMethodsExpr+`,
 		       `+corsHeadersExpr+`, `+corsExposedExpr+`, `+corsCredentialsExpr+`, `+corsMaxAgeExpr+`
 		FROM aggregation_configs agg
+		LEFT JOIN rate_limit_policies rlp ON rlp.id = agg.rate_limit_id AND rlp.is_active = TRUE AND rlp.deleted_at IS NULL
 		`+corsJoin+`
 		WHERE agg.is_active = TRUE
 		  AND agg.deleted_at IS NULL
@@ -266,12 +271,43 @@ func readAggregations(ctx context.Context, tx pgx.Tx, schemaVersion int, corsSou
 	byID := map[string]int{}
 	for rows.Next() {
 		var aggregation AggregationValue
+		var rateLimitID *string
+		var rateLimitPolicyID sql.NullString
+		var rateLimitPolicy RateLimitPolicyValue
+		var corsPolicyID *string
 		var corsID sql.NullString
 		var corsValue CORSValue
-		if err := rows.Scan(&aggregation.ID, &aggregation.Name, &aggregation.Path, &aggregation.Method, &corsID, &corsValue.AllowedOrigins, &corsValue.AllowedMethods, &corsValue.AllowedHeaders, &corsValue.ExposedHeaders, &corsValue.AllowCredentials, &corsValue.MaxAge); err != nil {
+		if err := rows.Scan(
+			&aggregation.ID,
+			&aggregation.Name,
+			&aggregation.Path,
+			&aggregation.Method,
+			&aggregation.AuthRequired,
+			&aggregation.RequiredScopeID,
+			&rateLimitID,
+			&rateLimitPolicyID,
+			&rateLimitPolicy.Name,
+			&rateLimitPolicy.LimitType,
+			&rateLimitPolicy.MaxRequests,
+			&rateLimitPolicy.WindowSeconds,
+			&corsPolicyID,
+			&corsID,
+			&corsValue.AllowedOrigins,
+			&corsValue.AllowedMethods,
+			&corsValue.AllowedHeaders,
+			&corsValue.ExposedHeaders,
+			&corsValue.AllowCredentials,
+			&corsValue.MaxAge,
+		); err != nil {
 			return nil, err
 		}
 		aggregation.SchemaVersion = schemaVersion
+		aggregation.RateLimitID = rateLimitID
+		if rateLimitPolicyID.Valid {
+			rateLimitPolicy.ID = rateLimitPolicyID.String
+			aggregation.RateLimit = &rateLimitPolicy
+		}
+		aggregation.CORSPolicyID = corsPolicyID
 		if corsID.Valid {
 			aggregation.CORS = &corsValue
 		}
@@ -339,6 +375,7 @@ func readAggregations(ctx context.Context, tx pgx.Tx, schemaVersion int, corsSou
 	}
 	return aggregations, stepRows.Err()
 }
+
 func readPlugins(ctx context.Context, tx pgx.Tx, schemaVersion int) (map[string][]PipelineValue, map[string]PluginMetaValue, error) {
 	rows, err := tx.Query(ctx, `
 		SELECT

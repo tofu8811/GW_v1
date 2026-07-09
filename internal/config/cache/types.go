@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	CurrentSchemaVersion = 5
+	CurrentSchemaVersion = 6
 
 	KeyVersion     = "cfg:version"
 	KeyReload      = "cfg:reload"
@@ -82,13 +82,18 @@ type APIKeyValue struct {
 }
 
 type AggregationValue struct {
-	SchemaVersion int                    `json:"schema_version"`
-	ID            string                 `json:"id"`
-	Name          string                 `json:"name"`
-	Path          string                 `json:"path"`
-	Method        string                 `json:"method"`
-	CORS          *CORSValue             `json:"cors,omitempty"`
-	Steps         []AggregationStepValue `json:"steps"`
+	SchemaVersion   int                    `json:"schema_version"`
+	ID              string                 `json:"id"`
+	Name            string                 `json:"name"`
+	Path            string                 `json:"path"`
+	Method          string                 `json:"method"`
+	AuthRequired    bool                   `json:"auth_required"`
+	RequiredScopeID *string                `json:"required_scope_id"`
+	RateLimitID     *string                `json:"rate_limit_id"`
+	RateLimit       *RateLimitPolicyValue  `json:"rate_limit,omitempty"`
+	CORSPolicyID    *string                `json:"cors_policy_id"`
+	CORS            *CORSValue             `json:"cors,omitempty"`
+	Steps           []AggregationStepValue `json:"steps"`
 }
 
 type AggregationStepValue struct {

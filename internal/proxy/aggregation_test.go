@@ -180,3 +180,102 @@ func setPrivateField(t *testing.T, store *configcache.Store, name string, value 
 	field := reflect.ValueOf(store).Elem().FieldByName(name)
 	reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem().Set(reflect.ValueOf(value))
 }
+
+type fakeAuthenticator struct {
+	called          bool
+	requiredScopeID *string
+	err             func(*fiber.Ctx) error
+}
+
+func (a *fakeAuthenticator) Authenticate(c *fiber.Ctx, requiredScopeID *string) error {
+	a.called = true
+	a.requiredScopeID = requiredScopeID
+	if a.err != nil {
+		return a.err(c)
+	}
+	return nil
+}
+
+func TestProxyAggregationRequiresAuthBeforeExecutingSteps(t *testing.T) {
+	agg := configcache.AggregationValue{ID: "agg-1", Name: "secure-dashboard", Path: "/api/dashboard", Method: "GET", AuthRequired: true}
+	store := configcache.NewStore(nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)), configcache.DefaultConfig())
+	setPrivateField(t, store, "aggregationsByKey", map[string]configcache.AggregationValue{
+		"cfg:aggregation:GET:/api/dashboard": agg,
+	})
+	auth := &fakeAuthenticator{err: func(c *fiber.Ctx) error { return c.SendStatus(fiber.StatusUnauthorized) }}
+	handler := &Handler{configCache: store, logger: slog.New(slog.NewTextHandler(io.Discard, nil)), authenticator: auth}
+	app := fiber.New()
+	app.Get("/api/dashboard", handler.Proxy)
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/dashboard", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != fiber.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", resp.StatusCode)
+	}
+	if !auth.called {
+		t.Fatal("expected authenticator to be called")
+	}
+}
+
+func TestProxyAggregationPassesRequiredScopeToAuthenticator(t *testing.T) {
+	scope := "scope-1"
+	agg := configcache.AggregationValue{ID: "agg-1", Name: "secure-dashboard", Path: "/api/dashboard", Method: "GET", AuthRequired: true, RequiredScopeID: &scope}
+	store := configcache.NewStore(nil, nil, slog.New(slog.NewTextHandler(io.Discard, nil)), configcache.DefaultConfig())
+	setPrivateField(t, store, "aggregationsByKey", map[string]configcache.AggregationValue{
+		"cfg:aggregation:GET:/api/dashboard": agg,
+	})
+	auth := &fakeAuthenticator{}
+	handler := &Handler{configCache: store, logger: slog.New(slog.NewTextHandler(io.Discard, nil)), authenticator: auth}
+	app := fiber.New()
+	app.Get("/api/dashboard", handler.Proxy)
+
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/dashboard", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if auth.requiredScopeID == nil || *auth.requiredScopeID != scope {
+		t.Fatalf("expected required scope %q, got %#v", scope, auth.requiredScopeID)
+	}
+}
+
+func TestHandleAggregationSubstitutesPathParamsAndForwardsQuery(t *testing.T) {
+	products := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/products/42" {
+			t.Fatalf("expected substituted path /products/42, got %s", r.URL.Path)
+		}
+		if r.URL.RawQuery != "page=1" {
+			t.Fatalf("expected forwarded query page=1, got %q", r.URL.RawQuery)
+		}
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer products.Close()
+
+	agg := configcache.AggregationValue{
+		ID: "agg-params", Name: "params-dashboard", Path: "/api/dashboard/{id}", Method: "GET",
+		Steps: []configcache.AggregationStepValue{{ID: "products-step", Sequence: 1, IsRequired: true, RequestTemplate: []byte(`{"method":"GET","path":"/products/{id}","forward_query":true}`), ResponseMapping: []byte(`{"target":"product"}`), ServiceID: "product-service"}},
+	}
+	app := fiber.New()
+	handler := &Handler{
+		configCache: testConfigStore(t, testServices(), map[string][]configcache.InstanceValue{"product-service": testInstances(t, products, products)["product-service"]}),
+		logger:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		roundRobin:  loadbalancer.NewRoundRobin(),
+		weighted:    loadbalancer.NewWeightedRoundRobin(),
+	}
+	app.Get("/api/dashboard/:id", func(c *fiber.Ctx) error {
+		c.Locals("aggregation_path_params", map[string]string{"id": c.Params("id")})
+		return handler.handleAggregation(c, &agg)
+	})
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/dashboard/42?page=1", nil), 2_000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != fiber.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d body=%s", resp.StatusCode, body)
+	}
+}

@@ -8,15 +8,18 @@ import (
 )
 
 type Aggregation struct {
-	ID           uuid.UUID
-	Name         string
-	Path         string
-	Method       string
-	CORSPolicyID *uuid.UUID
-	CORSPolicy   *CORSPolicySummary
-	IsActive     bool
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID              uuid.UUID
+	Name            string
+	Path            string
+	Method          string
+	AuthRequired    bool
+	RequiredScopeID *uuid.UUID
+	RateLimitID     *uuid.UUID
+	CORSPolicyID    *uuid.UUID
+	CORSPolicy      *CORSPolicySummary
+	IsActive        bool
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 type CORSPolicySummary struct {

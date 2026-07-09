@@ -86,8 +86,22 @@ func cloneRoute(route RouteValue) *RouteValue {
 	return &cloned
 }
 
+func cloneAggregations(aggregations []AggregationValue) []AggregationValue {
+	if aggregations == nil {
+		return nil
+	}
+	cloned := make([]AggregationValue, len(aggregations))
+	for i, aggregation := range aggregations {
+		cloned[i] = *cloneAggregation(aggregation)
+	}
+	return cloned
+}
 func cloneAggregation(aggregation AggregationValue) *AggregationValue {
 	cloned := aggregation
+	if aggregation.RateLimit != nil {
+		rateLimit := *aggregation.RateLimit
+		cloned.RateLimit = &rateLimit
+	}
 	if aggregation.CORS != nil {
 		corsValue := *aggregation.CORS
 		corsValue.AllowedOrigins = append([]string(nil), aggregation.CORS.AllowedOrigins...)

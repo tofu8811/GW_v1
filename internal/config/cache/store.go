@@ -26,6 +26,7 @@ type Store struct {
 	servicesByID         map[string]ServiceValue
 	instancesByServiceID map[string][]InstanceValue
 	apiKeysByHash        map[string]APIKeyValue
+	aggregations         []AggregationValue
 	aggregationsByKey    map[string]AggregationValue
 	pipelines            map[string][]PipelineValue
 	pluginMeta           map[string]PluginMetaValue
@@ -56,6 +57,7 @@ func NewStore(db *pgxpool.Pool, redisClient *redis.Client, logger *slog.Logger, 
 		servicesByID:         map[string]ServiceValue{},
 		instancesByServiceID: map[string][]InstanceValue{},
 		apiKeysByHash:        map[string]APIKeyValue{},
+		aggregations:         []AggregationValue{},
 		aggregationsByKey:    map[string]AggregationValue{},
 		pipelines:            map[string][]PipelineValue{},
 		pluginMeta:           map[string]PluginMetaValue{},
@@ -234,6 +236,7 @@ func (s *Store) applySnapshot(snap snapshot) {
 	s.servicesByID = servicesByID
 	s.instancesByServiceID = instancesByServiceID
 	s.apiKeysByHash = apiKeysByHash
+	s.aggregations = cloneAggregations(snap.Aggregations)
 	s.aggregationsByKey = aggregationsByKey
 	s.pipelines = snap.Pipelines
 	s.pluginMeta = snap.PluginMeta
