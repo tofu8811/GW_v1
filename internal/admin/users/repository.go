@@ -12,6 +12,7 @@ import (
 )
 
 var ErrUserNotFound = errors.New("user not found")
+var ErrRoleNotFound = errors.New("role not found")
 
 type Repository struct{ db *pgxpool.Pool }
 
@@ -78,6 +79,28 @@ func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*User, error) 
 		return nil, ErrUserNotFound
 	}
 	return &item, err
+}
+
+func (r *Repository) RoleNameByID(ctx context.Context, id uuid.UUID) (string, error) {
+	var name string
+	err := r.db.QueryRow(ctx, `
+		SELECT name
+		FROM roles
+		WHERE id = $1 AND deleted_at IS NULL AND is_active = TRUE
+	`, id).Scan(&name)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", ErrRoleNotFound
+	}
+	return name, err
+}
+
+func (r *Repository) Create(ctx context.Context, user *User) error {
+	err := r.db.QueryRow(ctx, `
+		INSERT INTO users (username, email, role_id, password_hash, is_active)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, created_at, updated_at
+	`, user.Username, user.Email, user.RoleID, user.PasswordHash, user.IsActive).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+	return err
 }
 
 func (r *Repository) Update(ctx context.Context, user *User, passwordHash *string) error {

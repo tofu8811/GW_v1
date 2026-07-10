@@ -19,19 +19,11 @@ WHERE r.id = '01972f6a-0001-7000-8000-000000000001'
   AND r.deleted_at IS NULL
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
--- Developer: can read routes/services, manage own API keys/scopes,
--- read logs/metrics, and read health.
+-- Developer: can observe request logs and metrics only.
 WITH developer_permissions(resource, action) AS (
     VALUES
-        ('services', 'read'),
-        ('routes', 'read'),
-        ('api_keys', 'read'),
-        ('api_keys', 'write'),
-        ('api_key_scopes', 'read'),
-        ('api_key_scopes', 'write'),
         ('logs', 'read'),
-        ('metrics', 'read'),
-        ('health', 'read')
+        ('metrics', 'read')
 )
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT

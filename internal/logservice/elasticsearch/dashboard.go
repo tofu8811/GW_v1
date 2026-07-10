@@ -59,6 +59,10 @@ func (c *Client) DashboardSnapshot(ctx context.Context, query model.RealtimeQuer
 }
 
 func buildRealtimeBoolQuery(query model.RealtimeQuery) map[string]any {
+	if query.NoResults {
+		return map[string]any{"match_none": map[string]any{}}
+	}
+
 	filters := []map[string]any{
 		{"range": map[string]any{"@timestamp": map[string]any{
 			"gte": "now-" + query.Window,
@@ -72,6 +76,10 @@ func buildRealtimeBoolQuery(query model.RealtimeQuery) map[string]any {
 	}
 	addTerm("service_name", query.ServiceName)
 	addTerm("route_id", query.RouteID)
+	if len(query.RouteIDs) > 0 {
+		filters = append(filters, map[string]any{"terms": map[string]any{"route_id": query.RouteIDs}})
+	}
+	addTerm("user_id", query.UserID)
 	addTerm("method", strings.ToUpper(query.Method))
 	addTerm("status_class", query.StatusClass)
 	addTerm("status_code", query.StatusCode)
@@ -128,6 +136,7 @@ func realtimeFilters(query model.RealtimeQuery) map[string]string {
 	}
 	add("service_name", query.ServiceName)
 	add("route_id", query.RouteID)
+	add("user_id", query.UserID)
 	add("method", query.Method)
 	add("status_class", query.StatusClass)
 	add("status_code", query.StatusCode)

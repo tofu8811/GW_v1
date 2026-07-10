@@ -5,6 +5,9 @@ type RealtimeQuery struct {
 	Interval    string
 	ServiceName string
 	RouteID     string
+	RouteIDs    []string
+	UserID      string
+	NoResults   bool
 	Method      string
 	StatusClass string
 	StatusCode  string
