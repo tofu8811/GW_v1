@@ -13,9 +13,10 @@ import (
 // query elasticsearch
 func (c *Client) DashboardSnapshot(ctx context.Context, query model.RealtimeQuery) (model.DashboardSnapshot, error) {
 	body := map[string]any{
-		"size":  0,
-		"query": buildRealtimeBoolQuery(query),
-		"aggs":  buildDashboardAggregations(query),
+		"size":             0,
+		"track_total_hits": true,
+		"query":            buildRealtimeBoolQuery(query),
+		"aggs":             buildDashboardAggregations(query),
 	}
 	payload, err := c.doJSON(ctx, http.MethodGet, c.searchURL(), body)
 	if err != nil {

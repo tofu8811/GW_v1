@@ -26,6 +26,8 @@ const (
 	maxRealtimeInterval     = time.Minute
 	defaultRealtimeTopLimit = 10
 	maxRealtimeTopLimit     = 50
+	realtimeReconcileEvery  = 10 * time.Second
+	realtimeFlushEvery      = 200 * time.Millisecond
 )
 
 // sse handler
@@ -51,23 +53,41 @@ func (h *Handler) RealtimeStream(c *fiber.Ctx) error {
 
 	// giữ connection + stream
 	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
-		ticker := time.NewTicker(durationFromQuery(query.Interval, defaultRealtimeInterval))
+		ticker := time.NewTicker(realtimeReconcileEvery)
 		defer ticker.Stop()
 
 		pingTicker := time.NewTicker(15 * time.Second) // heartbeat ping giữ kết nối sse
 		defer pingTicker.Stop()
 
+		flushTicker := time.NewTicker(realtimeFlushEvery)
+		defer flushTicker.Stop()
+
+		if !writeSSE(w, "ping", "", fiber.Map{}) {
+			return
+		}
+
+		var liveLogs <-chan model.RequestLog
+		if h.realtime != nil {
+			var unsubscribe func()
+			liveLogs, unsubscribe = h.realtime.Subscribe(query)
+			defer unsubscribe()
+		}
+
+		var snapshot model.DashboardSnapshot
+		dirty := false
 		sendMetrics := func() bool {
 			ctx, cancel := context.WithTimeout(requestCtx, 5*time.Second)
 			defer cancel()
 
-			snapshot, err := h.store.DashboardSnapshot(ctx, query)
+			nextSnapshot, err := h.store.DashboardSnapshot(ctx, query)
 			if err != nil {
 				return writeSSE(w, "error", "", fiber.Map{
 					"code":    "elasticsearch_unavailable",
 					"message": "metrics temporarily unavailable",
 				})
 			}
+			snapshot = nextSnapshot
+			dirty = false
 			return writeSSE(w, "metrics", snapshot.GeneratedAt, snapshot)
 		}
 
@@ -81,6 +101,21 @@ func (h *Handler) RealtimeStream(c *fiber.Ctx) error {
 				return
 			case <-ticker.C: // gửi event
 				if !sendMetrics() {
+					return
+				}
+			case entry, ok := <-liveLogs:
+				if !ok {
+					liveLogs = nil
+					continue
+				}
+				snapshot = applyRealtimeLog(snapshot, entry, query)
+				dirty = true
+			case <-flushTicker.C:
+				if !dirty {
+					continue
+				}
+				dirty = false
+				if !writeSSE(w, "metrics", snapshot.GeneratedAt, snapshot) {
 					return
 				}
 			case <-pingTicker.C:

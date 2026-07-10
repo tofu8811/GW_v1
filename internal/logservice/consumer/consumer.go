@@ -17,6 +17,10 @@ type Indexer interface {
 	BulkIndex(ctx context.Context, logs []model.RequestLog) error
 }
 
+type LogPublisher interface {
+	PublishLog(entry model.RequestLog)
+}
+
 type Config struct {
 	URL           string
 	Exchange      string
@@ -30,14 +34,15 @@ type Config struct {
 }
 
 type Consumer struct {
-	cfg     Config
-	indexer Indexer
-	logger  *slog.Logger
-	conn    *amqp.Connection
-	channel *amqp.Channel
+	cfg      Config
+	indexer  Indexer
+	realtime LogPublisher
+	logger   *slog.Logger
+	conn     *amqp.Connection
+	channel  *amqp.Channel
 }
 
-func New(cfg Config, indexer Indexer, logger *slog.Logger) (*Consumer, error) {
+func New(cfg Config, indexer Indexer, logger *slog.Logger, realtime ...LogPublisher) (*Consumer, error) {
 	if strings.TrimSpace(cfg.URL) == "" {
 		return nil, errors.New("rabbitmq url is required")
 	}
@@ -87,7 +92,11 @@ func New(cfg Config, indexer Indexer, logger *slog.Logger) (*Consumer, error) {
 		return nil, err
 	}
 
-	return &Consumer{cfg: cfg, indexer: indexer, logger: logger, conn: conn, channel: ch}, nil
+	var publisher LogPublisher
+	if len(realtime) > 0 {
+		publisher = realtime[0]
+	}
+	return &Consumer{cfg: cfg, indexer: indexer, realtime: publisher, logger: logger, conn: conn, channel: ch}, nil
 }
 
 func declareTopology(ch *amqp.Channel, cfg Config) error {
@@ -164,6 +173,9 @@ func (c *Consumer) Start(ctx context.Context) error {
 			}
 			if entry.Timestamp.IsZero() {
 				entry.Timestamp = time.Now().UTC()
+			}
+			if c.realtime != nil {
+				c.realtime.PublishLog(entry)
 			}
 			batch = append(batch, entry)
 			acks = append(acks, delivery)

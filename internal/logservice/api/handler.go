@@ -29,6 +29,7 @@ type Store interface {
 type Handler struct {
 	store      Store
 	routeScope RouteScopeStore
+	realtime   *RealtimeHub
 }
 
 type RouteScopeStore interface {
@@ -87,8 +88,12 @@ func (s *PostgresRouteScopeStore) AllowedRouteIDs(ctx context.Context, userID st
 	return routeIDs, nil
 }
 
-func NewHandler(store Store, routeScope RouteScopeStore) *Handler {
-	return &Handler{store: store, routeScope: routeScope}
+func NewHandler(store Store, routeScope RouteScopeStore, realtime ...*RealtimeHub) *Handler {
+	var hub *RealtimeHub
+	if len(realtime) > 0 {
+		hub = realtime[0]
+	}
+	return &Handler{store: store, routeScope: routeScope, realtime: hub}
 }
 
 func RegisterRoutes(app *fiber.App, handler *Handler, middlewares ...fiber.Handler) {

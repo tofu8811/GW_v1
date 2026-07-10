@@ -105,10 +105,11 @@ func (c *Client) SearchLogs(ctx context.Context, query model.LogQuery) ([]model.
 	}
 
 	body := map[string]any{
-		"from":  (query.Page - 1) * query.Limit,
-		"size":  query.Limit,
-		"query": buildBoolQuery(query),
-		"sort":  buildSort(query.Sort),
+		"from":             (query.Page - 1) * query.Limit,
+		"size":             query.Limit,
+		"track_total_hits": true,
+		"query":            buildBoolQuery(query),
+		"sort":             buildSort(query.Sort),
 	}
 
 	payload, err := c.doJSON(ctx, http.MethodGet, c.searchURL(), body)
@@ -139,8 +140,9 @@ func (c *Client) SearchLogs(ctx context.Context, query model.LogQuery) ([]model.
 
 func (c *Client) Summary(ctx context.Context, query model.LogQuery) (map[string]any, error) {
 	body := map[string]any{
-		"size":  0,
-		"query": buildBoolQuery(query),
+		"size":             0,
+		"track_total_hits": true,
+		"query":            buildBoolQuery(query),
 		"aggs": map[string]any{
 			"avg_latency_ms": map[string]any{"avg": map[string]any{"field": "response_time_ms"}},
 			"p95_latency_ms": map[string]any{"percentiles": map[string]any{"field": "response_time_ms", "percents": []int{95}}},
@@ -187,7 +189,7 @@ func (c *Client) ErrorRate(ctx context.Context, query model.LogQuery) (map[strin
 		},
 		"errors": map[string]any{"filter": map[string]any{"term": map[string]any{"is_error": true}}},
 	}
-	body := map[string]any{"size": 0, "query": buildBoolQuery(query), "aggs": aggs}
+	body := map[string]any{"size": 0, "track_total_hits": true, "query": buildBoolQuery(query), "aggs": aggs}
 	payload, err := c.doJSON(ctx, http.MethodGet, c.searchURL(), body)
 	if err != nil {
 		return nil, err
@@ -299,7 +301,7 @@ func (c *Client) TopRoutes(ctx context.Context, query model.LogQuery) ([]map[str
 		aggs["top_routes"].(map[string]any)["terms"].(map[string]any)["order"] = map[string]any{"avg_latency": "desc"}
 	}
 
-	body := map[string]any{"size": 0, "query": buildBoolQuery(query), "aggs": aggs}
+	body := map[string]any{"size": 0, "track_total_hits": true, "query": buildBoolQuery(query), "aggs": aggs}
 	payload, err := c.doJSON(ctx, http.MethodGet, c.searchURL(), body)
 	if err != nil {
 		return nil, err
@@ -320,7 +322,7 @@ func (c *Client) dateHistogram(ctx context.Context, query model.LogQuery, countN
 	if len(extraAggs) > 0 {
 		aggs["series"].(map[string]any)["aggs"] = extraAggs
 	}
-	body := map[string]any{"size": 0, "query": buildBoolQuery(query), "aggs": aggs}
+	body := map[string]any{"size": 0, "track_total_hits": true, "query": buildBoolQuery(query), "aggs": aggs}
 	payload, err := c.doJSON(ctx, http.MethodGet, c.searchURL(), body)
 	if err != nil {
 		return nil, err

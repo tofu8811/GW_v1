@@ -47,6 +47,7 @@ func main() {
 	defer rdb.Close()
 
 	esClient := loges.NewClient(cfg.ElasticsearchURL, cfg.ElasticsearchIndexPrefix)
+	realtimeHub := api.NewRealtimeHub()
 	consumer, err := logconsumer.New(logconsumer.Config{
 		URL:           cfg.RabbitMQURL,
 		Exchange:      cfg.RabbitMQLogExchange,
@@ -57,7 +58,7 @@ func main() {
 		BatchSize:     cfg.LogConsumerBatchSize,
 		FlushInterval: cfg.LogConsumerFlushInterval,
 		Prefetch:      cfg.LogConsumerPrefetch,
-	}, esClient, logg)
+	}, esClient, logg, realtimeHub)
 	if err != nil {
 		logg.Error("failed to create log consumer", "error", err)
 		log.Fatal(err)
@@ -84,7 +85,7 @@ func main() {
 		return c.SendStatus(fiber.StatusNoContent)
 	})
 
-	api.RegisterRoutes(app, api.NewHandler(esClient, api.NewPostgresRouteScopeStore(db)), middleware.JWTAuth(cfg.JWTSecret, rdb, db))
+	api.RegisterRoutes(app, api.NewHandler(esClient, api.NewPostgresRouteScopeStore(db), realtimeHub), middleware.JWTAuth(cfg.JWTSecret, rdb, db))
 
 	go func() {
 		<-ctx.Done()
