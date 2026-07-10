@@ -374,6 +374,10 @@ func (c *Client) indexFor(timestamp time.Time) string {
 }
 
 func buildBoolQuery(query model.LogQuery) map[string]any {
+	if query.NoResults {
+		return map[string]any{"match_none": map[string]any{}}
+	}
+
 	filters := make([]map[string]any, 0)
 	if query.From != "" || query.To != "" {
 		rng := map[string]any{}
@@ -392,6 +396,10 @@ func buildBoolQuery(query model.LogQuery) map[string]any {
 	}
 	addTerm("service_name", query.ServiceName)
 	addTerm("route_id", query.RouteID)
+	if len(query.RouteIDs) > 0 {
+		filters = append(filters, map[string]any{"terms": map[string]any{"route_id": query.RouteIDs}})
+	}
+	addTerm("user_id", query.UserID)
 	addTerm("method", strings.ToUpper(query.Method))
 	addTerm("status_class", query.StatusClass)
 	addTerm("status_code", query.StatusCode)

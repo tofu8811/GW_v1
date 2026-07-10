@@ -84,7 +84,7 @@ func main() {
 		return c.SendStatus(fiber.StatusNoContent)
 	})
 
-	api.RegisterRoutes(app, api.NewHandler(esClient), middleware.JWTAuth(cfg.JWTSecret, rdb, db))
+	api.RegisterRoutes(app, api.NewHandler(esClient, api.NewPostgresRouteScopeStore(db)), middleware.JWTAuth(cfg.JWTSecret, rdb, db))
 
 	go func() {
 		<-ctx.Done()

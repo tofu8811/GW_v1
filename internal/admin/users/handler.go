@@ -54,6 +54,62 @@ func (h *Handler) FindByID(c *fiber.Ctx) error {
 	return response.OK(c, toResponse(*item))
 }
 
+func (h *Handler) Create(c *fiber.Ctx) error {
+	var req CreateUserRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.BadRequest(c, "invalid request body")
+	}
+
+	username, err := normalizeUsername(req.Username)
+	if err != nil {
+		return response.BadRequest(c, err.Error())
+	}
+	email, err := normalizeEmail(req.Email)
+	if err != nil {
+		return response.BadRequest(c, err.Error())
+	}
+	roleID, err := validation.ParseRequiredUUID("role_id", req.RoleID)
+	if err != nil {
+		return response.BadRequest(c, err.Error())
+	}
+	roleName, err := h.repository.RoleNameByID(c.Context(), roleID)
+	if errors.Is(err, ErrRoleNotFound) {
+		return response.BadRequest(c, "role_id does not exist")
+	}
+	if err != nil {
+		return response.InternalServerError(c)
+	}
+	if isAdminRole(roleName) {
+		return response.Forbidden(c, "cannot create another admin user")
+	}
+	passwordHash, err := normalizeAndHashPassword(req.Password)
+	if err != nil {
+		return response.BadRequest(c, err.Error())
+	}
+
+	isActive := true
+	if req.IsActive != nil {
+		isActive = *req.IsActive
+	}
+	user := &User{
+		Username:     username,
+		Email:        email,
+		RoleID:       roleID,
+		RoleName:     roleName,
+		IsActive:     isActive,
+		PasswordHash: passwordHash,
+	}
+	if err := h.repository.Create(c.Context(), user); err != nil {
+		return handleDBError(c, err)
+	}
+
+	created, err := h.repository.FindByID(c.Context(), user.ID)
+	if err != nil {
+		return response.InternalServerError(c)
+	}
+	return response.Created(c, toResponse(*created))
+}
+
 func (h *Handler) Update(c *fiber.Ctx) error {
 	id, err := validation.ParseRequiredUUID("id", c.Params("id"))
 	if err != nil {
@@ -91,6 +147,18 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 		roleID, err := validation.ParseRequiredUUID("role_id", *req.RoleID)
 		if err != nil {
 			return response.BadRequest(c, err.Error())
+		}
+		if roleID != item.RoleID {
+			roleName, err := h.repository.RoleNameByID(c.Context(), roleID)
+			if errors.Is(err, ErrRoleNotFound) {
+				return response.BadRequest(c, "role_id does not exist")
+			}
+			if err != nil {
+				return response.InternalServerError(c)
+			}
+			if isAdminRole(roleName) {
+				return response.Forbidden(c, "cannot promote user to admin")
+			}
 		}
 		item.RoleID = roleID
 	}
@@ -190,6 +258,10 @@ func normalizeAndHashPassword(password string) (string, error) {
 		return "", validation.FieldError{Field: "password", Message: "password must be at least 6 characters"}
 	}
 	return passwordhelper.HashPassword(normalized)
+}
+
+func isAdminRole(roleName string) bool {
+	return strings.EqualFold(strings.TrimSpace(roleName), "admin")
 }
 
 func handleDBError(c *fiber.Ctx, err error) error {

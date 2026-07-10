@@ -36,6 +36,8 @@ type LogQuery struct {
 	To          string
 	ServiceName string
 	RouteID     string
+	RouteIDs    []string
+	UserID      string
 	Method      string
 	StatusClass string
 	StatusCode  string
@@ -49,6 +51,7 @@ type LogQuery struct {
 	TopLimit    int
 
 	ExcludeControlPlane bool
+	NoResults           bool
 }
 
 type PageMeta struct {

@@ -10,6 +10,7 @@ import (
 	"gateway-api/helper/pagination"
 	"gateway-api/helper/response"
 	"gateway-api/helper/validation"
+	"gateway-api/internal/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -40,6 +41,9 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	limitType, err := normalizeLimitType(req.LimitType)
 	if err != nil {
 		return response.BadRequest(c, err.Error())
+	}
+	if err := enforceDeveloperIPLimit(c, limitType); err != nil {
+		return err
 	}
 	if err := validation.ValidateIntGreaterThan("max_requests", req.MaxRequests, 0); err != nil {
 		return response.BadRequest(c, err.Error())
@@ -141,7 +145,15 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 		if err != nil {
 			return response.BadRequest(c, err.Error())
 		}
+		if err := enforceDeveloperIPLimit(c, limitType); err != nil {
+			return err
+		}
 		policy.LimitType = limitType
+	}
+	if req.LimitType == nil {
+		if err := enforceDeveloperIPLimit(c, policy.LimitType); err != nil {
+			return err
+		}
 	}
 	if req.MaxRequests != nil {
 		if err := validation.ValidateIntGreaterThan("max_requests", *req.MaxRequests, 0); err != nil {
@@ -216,6 +228,16 @@ func normalizeLimitType(limitType string) (string, error) {
 		return "", err
 	}
 	return normalized, nil
+}
+
+func enforceDeveloperIPLimit(c *fiber.Ctx, limitType string) error {
+	if strings.EqualFold(middleware.GetUserRole(c), "admin") {
+		return nil
+	}
+	if limitType == "ip" {
+		return nil
+	}
+	return response.Forbidden(c, "developer can only manage IP-based rate limits")
 }
 
 func boolValue(value *bool, defaultValue bool) bool {

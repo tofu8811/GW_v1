@@ -12,6 +12,7 @@ import (
 
 	"gateway-api/helper/response"
 	"gateway-api/internal/logservice/model"
+	"gateway-api/internal/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -32,6 +33,10 @@ func (h *Handler) RealtimeStream(c *fiber.Ctx) error {
 	query, err := parseRealtimeQuery(c)
 	if err != nil {
 		return response.BadRequest(c, err.Error())
+	}
+	query, err = h.scopeRealtimeQuery(c, query)
+	if err != nil {
+		return response.InternalServerError(c)
 	}
 
 	c.Set(fiber.HeaderContentType, "text/event-stream") // sse stream
@@ -89,6 +94,34 @@ func (h *Handler) RealtimeStream(c *fiber.Ctx) error {
 	return nil
 }
 
+func (h *Handler) scopeRealtimeQuery(c *fiber.Ctx, query model.RealtimeQuery) (model.RealtimeQuery, error) {
+	if strings.EqualFold(middleware.GetUserRole(c), "admin") {
+		return query, nil
+	}
+	userID := middleware.GetUserID(c)
+	query.UserID = userID
+	if h.routeScope == nil {
+		return query, nil
+	}
+
+	allowedRouteIDs, err := h.routeScope.AllowedRouteIDs(c.UserContext(), userID)
+	if err != nil {
+		return query, err
+	}
+	if len(allowedRouteIDs) == 0 {
+		query.NoResults = true
+		return query, nil
+	}
+	if strings.TrimSpace(query.RouteID) != "" {
+		if !containsRouteID(allowedRouteIDs, query.RouteID) {
+			query.NoResults = true
+			return query, nil
+		}
+		return query, nil
+	}
+	query.RouteIDs = allowedRouteIDs
+	return query, nil
+}
 func parseRealtimeQuery(c *fiber.Ctx) (model.RealtimeQuery, error) {
 	window, err := parseClampedDuration(c.Query("window"), defaultRealtimeWindow, minRealtimeWindow, maxRealtimeWindow)
 	if err != nil {
