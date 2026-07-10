@@ -404,18 +404,27 @@ func buildBoolQuery(query model.LogQuery) map[string]any {
 	addTerm("status_class", query.StatusClass)
 	addTerm("status_code", query.StatusCode)
 	addTerm("client_ip", query.ClientIP)
+	addTerm("trace_id", query.TraceID)
+	addTerm("path", query.Path)
+	addTerm("normalized_path", query.NormalizedPath)
+	addTerm("api_key_id", query.APIKeyID)
 
 	boolQuery := map[string]any{"filter": filters}
 	if query.ExcludeControlPlane {
 		boolQuery["must_not"] = controlPlaneExclusions()
 	}
+	must := make([]map[string]any, 0)
+	if strings.TrimSpace(query.ErrorMessage) != "" {
+		must = append(must, map[string]any{"match": map[string]any{"error_message": query.ErrorMessage}})
+	}
 	if strings.TrimSpace(query.Query) != "" {
-		boolQuery["must"] = []map[string]any{
-			{"multi_match": map[string]any{
-				"query":  query.Query,
-				"fields": []string{"path", "normalized_path", "service_name", "trace_id", "error_message", "user_agent"},
-			}},
-		}
+		must = append(must, map[string]any{"multi_match": map[string]any{
+			"query":  query.Query,
+			"fields": []string{"path", "normalized_path", "service_name", "trace_id", "error_message", "user_agent"},
+		}})
+	}
+	if len(must) > 0 {
+		boolQuery["must"] = must
 	}
 	return map[string]any{"bool": boolQuery}
 }
@@ -434,12 +443,26 @@ func buildSort(value string) []map[string]any {
 	field := "@timestamp"
 	if strings.TrimSpace(value) != "" {
 		parts := strings.Split(value, ":")
-		field = parts[0]
+		field = strings.TrimSpace(parts[0])
 		if len(parts) > 1 && strings.EqualFold(parts[1], "asc") {
 			direction = "asc"
 		}
 	}
+	if _, ok := allowedLogSortFields[field]; !ok {
+		field = "@timestamp"
+		direction = "desc"
+	}
 	return []map[string]any{{field: map[string]any{"order": direction}}}
+}
+
+var allowedLogSortFields = map[string]struct{}{
+	"@timestamp":          {},
+	"response_time_ms":    {},
+	"gateway_latency_ms":  {},
+	"upstream_latency_ms": {},
+	"status_code":         {},
+	"request_size":        {},
+	"response_size":       {},
 }
 
 func dateHistogramAgg(query model.LogQuery) map[string]any {

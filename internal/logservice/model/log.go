@@ -32,23 +32,28 @@ type RequestLog struct {
 }
 
 type LogQuery struct {
-	From        string
-	To          string
-	ServiceName string
-	RouteID     string
-	RouteIDs    []string
-	UserID      string
-	Method      string
-	StatusClass string
-	StatusCode  string
-	ClientIP    string
-	Query       string
-	Page        int
-	Limit       int
-	Sort        string
-	Interval    string
-	TopSortBy   string
-	TopLimit    int
+	From           string
+	To             string
+	ServiceName    string
+	RouteID        string
+	RouteIDs       []string
+	UserID         string
+	Method         string
+	StatusClass    string
+	StatusCode     string
+	ClientIP       string
+	TraceID        string
+	Path           string
+	NormalizedPath string
+	APIKeyID       string
+	ErrorMessage   string
+	Query          string
+	Page           int
+	Limit          int
+	Sort           string
+	Interval       string
+	TopSortBy      string
+	TopLimit       int
 
 	ExcludeControlPlane bool
 	NoResults           bool

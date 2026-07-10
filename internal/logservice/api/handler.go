@@ -220,20 +220,25 @@ func (h *Handler) scopedMetricQuery(c *fiber.Ctx) (model.LogQuery, error) {
 }
 func parseLogQuery(c *fiber.Ctx) model.LogQuery {
 	return model.LogQuery{
-		From:        c.Query("from"),
-		To:          c.Query("to"),
-		ServiceName: c.Query("service_name"),
-		RouteID:     c.Query("route_id"),
-		UserID:      c.Query("user_id"),
-		Method:      c.Query("method"),
-		StatusClass: c.Query("status_class"),
-		StatusCode:  c.Query("status_code"),
-		ClientIP:    c.Query("client_ip"),
-		Query:       c.Query("q"),
-		Page:        queryInt(c, "page", 1),
-		Limit:       queryInt(c, "limit", 20),
-		Sort:        c.Query("sort", "@timestamp:desc"),
-		Interval:    c.Query("interval", "1s"),
+		From:           c.Query("from"),
+		To:             c.Query("to"),
+		ServiceName:    c.Query("service_name"),
+		RouteID:        c.Query("route_id"),
+		UserID:         c.Query("user_id"),
+		Method:         c.Query("method"),
+		StatusClass:    c.Query("status_class"),
+		StatusCode:     c.Query("status_code"),
+		ClientIP:       c.Query("client_ip"),
+		TraceID:        c.Query("trace_id"),
+		Path:           c.Query("path"),
+		NormalizedPath: c.Query("normalized_path"),
+		APIKeyID:       c.Query("api_key_id"),
+		ErrorMessage:   c.Query("error_message"),
+		Query:          c.Query("q"),
+		Page:           queryInt(c, "page", 1),
+		Limit:          queryInt(c, "limit", 20),
+		Sort:           c.Query("sort", "@timestamp:desc"),
+		Interval:       c.Query("interval", "1s"),
 	}
 }
 
@@ -306,6 +311,11 @@ func filters(query model.LogQuery) fiber.Map {
 	add("status_class", query.StatusClass)
 	add("status_code", query.StatusCode)
 	add("client_ip", query.ClientIP)
+	add("trace_id", query.TraceID)
+	add("path", query.Path)
+	add("normalized_path", query.NormalizedPath)
+	add("api_key_id", query.APIKeyID)
+	add("error_message", query.ErrorMessage)
 	add("interval", query.Interval)
 	return out
 }
