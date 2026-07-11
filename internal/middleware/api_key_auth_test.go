@@ -1,8 +1,6 @@
 package middleware
 
 import (
-	"context"
-	"errors"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -11,7 +9,6 @@ import (
 	configcache "gateway-api/internal/config/cache"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type fakeAPIKeyCache struct {
@@ -23,16 +20,14 @@ func (f fakeAPIKeyCache) FindAPIKeyByHash(hash string) (configcache.APIKeyValue,
 	return apiKey, ok
 }
 
-type fakeLastUsedUpdater struct {
+type fakeLastUsedRecorder struct {
 	calls int
-	args  []any
-	err   error
+	ids   []string
 }
 
-func (f *fakeLastUsedUpdater) Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error) {
+func (f *fakeLastUsedRecorder) MarkUsed(apiKeyID string) {
 	f.calls++
-	f.args = arguments
-	return pgconn.NewCommandTag("UPDATE 1"), f.err
+	f.ids = append(f.ids, apiKeyID)
 }
 
 func TestHasScope(t *testing.T) {
@@ -112,13 +107,13 @@ func TestAPIKeyAuthAcceptsCachedKeyAndScrubsHeader(t *testing.T) {
 	rawKey := "gw_live_test"
 	ownerUserID := "user-id"
 	cache := cacheForRawKey(t, rawKey, validAPIKeyValue("key-id", []string{"scope-id"}, time.Now().Add(time.Hour), &ownerUserID, true, true, nil))
-	updater := &fakeLastUsedUpdater{}
+	recorder := &fakeLastUsedRecorder{}
 	requiredScope := "scope-id"
 	var sawAPIKeyID any
 	var sawUserID any
 	var sawHeader string
 
-	status := runAPIKeyAuthRequest(t, apiKeyAuthFixture{cache: cache, updater: updater}, rawKey, &requiredScope, func(c *fiber.Ctx) {
+	status := runAPIKeyAuthRequest(t, apiKeyAuthFixture{cache: cache, recorder: recorder}, rawKey, &requiredScope, func(c *fiber.Ctx) {
 		sawAPIKeyID = c.Locals(LocalsAPIKeyID)
 		sawUserID = c.Locals(LocalsUserID)
 		sawHeader = string(c.Request().Header.Peek(apiKeyHeader))
@@ -132,31 +127,20 @@ func TestAPIKeyAuthAcceptsCachedKeyAndScrubsHeader(t *testing.T) {
 	if sawHeader != "" {
 		t.Fatalf("expected API key header to be removed, got %q", sawHeader)
 	}
-	if updater.calls != 1 || len(updater.args) != 1 || updater.args[0] != "key-id" {
-		t.Fatalf("expected last_used update for key-id, got calls=%d args=%#v", updater.calls, updater.args)
-	}
-}
-
-func TestAPIKeyAuthReturnsInternalServerErrorWhenLastUsedUpdateFails(t *testing.T) {
-	rawKey := "gw_live_test"
-	cache := cacheForRawKey(t, rawKey, validAPIKeyValue("key-id", []string{"scope-id"}, time.Now().Add(time.Hour), nil, true, true, nil))
-	updater := &fakeLastUsedUpdater{err: errors.New("db unavailable")}
-
-	status := runAPIKeyAuthRequest(t, apiKeyAuthFixture{cache: cache, updater: updater}, rawKey, nil, nil)
-	if status != fiber.StatusInternalServerError {
-		t.Fatalf("expected 500, got %d", status)
+	if recorder.calls != 1 || len(recorder.ids) != 1 || recorder.ids[0] != "key-id" {
+		t.Fatalf("expected last_used mark for key-id, got calls=%d ids=%#v", recorder.calls, recorder.ids)
 	}
 }
 
 type apiKeyAuthFixture struct {
-	cache   fakeAPIKeyCache
-	updater *fakeLastUsedUpdater
+	cache    fakeAPIKeyCache
+	recorder *fakeLastUsedRecorder
 }
 
 func runAPIKeyAuthRequest(t *testing.T, fixture apiKeyAuthFixture, rawKey string, requiredScope *string, afterAuth func(*fiber.Ctx)) int {
 	t.Helper()
 
-	auth := NewAPIKeyAuth(fixture.updater, fixture.cache)
+	auth := NewAPIKeyAuth(fixture.recorder, fixture.cache)
 	app := fiber.New()
 	app.Get("/", func(c *fiber.Ctx) error {
 		if err := auth.Authenticate(c, requiredScope); err != nil {

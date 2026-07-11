@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"strings"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	configcache "gateway-api/internal/config/cache"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const (
@@ -23,17 +21,17 @@ type APIKeyCache interface {
 	FindAPIKeyByHash(hash string) (configcache.APIKeyValue, bool)
 }
 
-type APIKeyLastUsedUpdater interface {
-	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+type APIKeyLastUsedRecorder interface {
+	MarkUsed(apiKeyID string)
 }
 
 type APIKeyAuth struct {
-	db    APIKeyLastUsedUpdater
-	cache APIKeyCache
+	lastUsed APIKeyLastUsedRecorder
+	cache    APIKeyCache
 }
 
-func NewAPIKeyAuth(db APIKeyLastUsedUpdater, cache APIKeyCache) *APIKeyAuth {
-	return &APIKeyAuth{db: db, cache: cache}
+func NewAPIKeyAuth(lastUsed APIKeyLastUsedRecorder, cache APIKeyCache) *APIKeyAuth {
+	return &APIKeyAuth{lastUsed: lastUsed, cache: cache}
 }
 
 func (a *APIKeyAuth) Authenticate(c *fiber.Ctx, requiredScopeID *string) error {
@@ -61,10 +59,8 @@ func (a *APIKeyAuth) Authenticate(c *fiber.Ctx, requiredScopeID *string) error {
 		return response.Forbidden(c, "API key does not have required scope for this route")
 	}
 
-	if a.db != nil {
-		if _, err := a.db.Exec(c.Context(), `UPDATE api_keys SET last_used_at = now() WHERE id = $1`, apiKey.ID); err != nil {
-			return response.InternalServerError(c)
-		}
+	if a.lastUsed != nil {
+		a.lastUsed.MarkUsed(apiKey.ID)
 	}
 
 	c.Locals(LocalsAPIKeyID, apiKey.ID)

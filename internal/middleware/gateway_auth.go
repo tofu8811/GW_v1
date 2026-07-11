@@ -21,9 +21,9 @@ type GatewayAuth struct {
 	jwtSecret  string
 }
 
-func NewGatewayAuth(db *pgxpool.Pool, rdb *redis.Client, cache APIKeyCache, jwtSecret string) *GatewayAuth {
+func NewGatewayAuth(db *pgxpool.Pool, rdb *redis.Client, cache APIKeyCache, lastUsed APIKeyLastUsedRecorder, jwtSecret string) *GatewayAuth {
 	return &GatewayAuth{
-		apiKeyAuth: NewAPIKeyAuth(db, cache),
+		apiKeyAuth: NewAPIKeyAuth(lastUsed, cache),
 		db:         db,
 		rdb:        rdb,
 		jwtSecret:  jwtSecret,

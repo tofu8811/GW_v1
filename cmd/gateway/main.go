@@ -115,7 +115,10 @@ func main() {
 	jwtAuth := middleware.JWTAuth(cfg.JWTSecret, rdb, db)
 	admin.RegisterAdminRoutes(srv.App, db, rdb, cacheStore, configNotifier, upstreamHealthStore, upstreamChecker, ipBlacklistChecker, jwtAuth)
 
-	gatewayAuth := middleware.NewGatewayAuth(db, rdb, cacheStore, cfg.JWTSecret)
+	apiKeyLastUsedBatcher := middleware.NewAPIKeyLastUsedBatcher(db, logg, 0)
+	defer apiKeyLastUsedBatcher.Flush(context.Background())
+	go apiKeyLastUsedBatcher.Start(ctx)
+	gatewayAuth := middleware.NewGatewayAuth(db, rdb, cacheStore, apiKeyLastUsedBatcher, cfg.JWTSecret)
 	proxy.RegisterGatewayRoutes(srv.App, cacheStore, rdb, logg, upstreamHealthFilter, breakers, gatewayAuth, ipBlacklistChecker)
 
 	if err := srv.Run(cfg.AppPort); err != nil {
