@@ -9,12 +9,15 @@ import (
 	"gateway-api/config"
 	"gateway-api/infrastructure/logger"
 	"gateway-api/infrastructure/postgres"
+	"gateway-api/infrastructure/rabbitmq"
 	redisclient "gateway-api/infrastructure/redis"
 	"gateway-api/internal/admin"
 	"gateway-api/internal/auth"
 	configcache "gateway-api/internal/config/cache"
 	"gateway-api/internal/health"
+	"gateway-api/internal/middleware"
 	"gateway-api/internal/proxy"
+	"gateway-api/internal/security/ipblacklist"
 	"gateway-api/internal/server"
 	"gateway-api/internal/upstream/breaker"
 	upstreamhealth "gateway-api/internal/upstream/health"
@@ -26,6 +29,31 @@ func main() {
 
 	cfg := config.Load()
 	logg := logger.New(cfg.AppEnv)
+	if err := cfg.Validate(); err != nil {
+		logg.Error("invalid configuration", "error", err)
+		log.Fatal(err)
+	}
+	requestLogFile, err := logger.OpenJSONLogFile(cfg.LogFilePath)
+	if err != nil {
+		logg.Error("failed to open request log file", "error", err, "path", cfg.LogFilePath)
+		log.Fatal(err)
+	}
+	defer requestLogFile.Close()
+	requestLogSink := middleware.RequestLogSink(middleware.NewJSONLineSink(requestLogFile))
+	if cfg.RabbitMQURL != "" {
+		logPublisher, err := rabbitmq.NewLogPublisher(rabbitmq.LogPublisherConfig{
+			URL:        cfg.RabbitMQURL,
+			Exchange:   cfg.RabbitMQLogExchange,
+			RoutingKey: cfg.RabbitMQLogRoutingKey,
+			Timeout:    cfg.RabbitMQPublishTimeout,
+		}, logg)
+		if err != nil {
+			logg.Warn("failed to create rabbitmq log publisher, falling back to file logs", "error", err)
+		} else {
+			defer logPublisher.Close()
+			requestLogSink = logPublisher
+		}
+	}
 
 	db, err := postgres.NewPool(cfg.DatabaseURL)
 	if err != nil {
@@ -47,6 +75,7 @@ func main() {
 		RebuildLockTTL:  cfg.ConfigRebuildLockTTL,
 		RebuildLockWait: cfg.ConfigLockWait,
 		SchemaVersion:   cfg.ConfigSchemaVersion,
+		CORSSource:      cfg.CORSSource,
 	})
 
 	if err := cacheStore.WarmAll(ctx); err != nil {
@@ -75,12 +104,22 @@ func main() {
 	upstreamHealthFilter := upstreamhealth.NewHealthFilter(upstreamHealthStore, breakers)
 
 	healthHandler := health.NewHandler(db, rdb, cacheStore.Ready)
-	srv := server.New(logg, healthHandler)
+	srv := server.New(logg, healthHandler, requestLogSink, cfg.AppEnv, cfg.GatewayNode)
+	ipBlacklistChecker := ipblacklist.NewChecker(db, rdb, logg)
+	if err := ipBlacklistChecker.Reload(ctx); err != nil {
+		logg.Error("failed to warm ip blacklist cache", "error", err)
+		log.Fatal(err)
+	}
 
 	auth.RegisterAuthRoutes(srv.App, db, rdb, cfg.JWTSecret, cfg.JWTAccessTTL, cfg.JWTRefreshTTL, cfg.AppEnv)
-	admin.RegisterAdminRoutes(srv.App, db, rdb, cacheStore, configNotifier, upstreamHealthStore, upstreamChecker)
+	jwtAuth := middleware.JWTAuth(cfg.JWTSecret, rdb, db)
+	admin.RegisterAdminRoutes(srv.App, db, rdb, cacheStore, configNotifier, upstreamHealthStore, upstreamChecker, ipBlacklistChecker, jwtAuth)
 
-	proxy.RegisterGatewayRoutes(srv.App, cacheStore, logg, upstreamHealthFilter, breakers)
+	apiKeyLastUsedBatcher := middleware.NewAPIKeyLastUsedBatcher(db, logg, 0)
+	defer apiKeyLastUsedBatcher.Flush(context.Background())
+	go apiKeyLastUsedBatcher.Start(ctx)
+	gatewayAuth := middleware.NewGatewayAuth(db, rdb, cacheStore, apiKeyLastUsedBatcher, cfg.JWTSecret)
+	proxy.RegisterGatewayRoutes(srv.App, cacheStore, rdb, logg, upstreamHealthFilter, breakers, gatewayAuth, ipBlacklistChecker)
 
 	if err := srv.Run(cfg.AppPort); err != nil {
 		logg.Error("server stopped", "error", err)

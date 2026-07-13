@@ -1,10 +1,59 @@
--- Seed gateway test routes and CORS configs.
+-- Seed gateway test routes, API scopes, and CORS configs.
 
 BEGIN;
 
+INSERT INTO api_scopes (
+    id, service_id, code, resource, action, description, is_active
+)
+VALUES
+    (
+        'c0000000-0000-0000-0000-000000000101',
+        '60000000-0000-0000-0000-000000000102',
+        'products:read',
+        'products',
+        'read',
+        'Read products through product-service',
+        TRUE
+    ),
+    (
+        'c0000000-0000-0000-0000-000000000102',
+        '60000000-0000-0000-0000-000000000102',
+        'products:write',
+        'products',
+        'write',
+        'Write products through product-service',
+        TRUE
+    ),
+    (
+        'c0000000-0000-0000-0000-000000000201',
+        '60000000-0000-0000-0000-000000000103',
+        'orders:read',
+        'orders',
+        'read',
+        'Read orders through order-service',
+        TRUE
+    ),
+    (
+        'c0000000-0000-0000-0000-000000000202',
+        '60000000-0000-0000-0000-000000000103',
+        'orders:write',
+        'orders',
+        'write',
+        'Write orders through order-service',
+        TRUE
+    )
+ON CONFLICT (id) DO UPDATE SET
+    service_id = EXCLUDED.service_id,
+    code = EXCLUDED.code,
+    resource = EXCLUDED.resource,
+    action = EXCLUDED.action,
+    description = EXCLUDED.description,
+    is_active = EXCLUDED.is_active,
+    deleted_at = NULL;
+
 INSERT INTO routes (
     id, path, method, service_id, strip_prefix,
-    rewrite_target, auth_required, rate_limit_id,
+    rewrite_target, auth_required, required_scope_id, rate_limit_id,
     priority, is_active
 )
 VALUES
@@ -16,6 +65,7 @@ VALUES
         FALSE,
         '/api/user/register',
         FALSE,
+        NULL,
         NULL,
         100,
         TRUE
@@ -29,6 +79,7 @@ VALUES
         '/api/auth/login',
         FALSE,
         NULL,
+        NULL,
         100,
         TRUE
     ),
@@ -40,6 +91,7 @@ VALUES
         FALSE,
         '/api/products',
         FALSE,
+        NULL,
         NULL,
         100,
         TRUE
@@ -53,6 +105,7 @@ VALUES
         '/api/product/{id}',
         FALSE,
         NULL,
+        NULL,
         100,
         TRUE
     ),
@@ -64,6 +117,7 @@ VALUES
         FALSE,
         '/api/orders',
         TRUE,
+        'c0000000-0000-0000-0000-000000000201',
         NULL,
         100,
         TRUE
@@ -76,6 +130,7 @@ VALUES
         FALSE,
         '/api/order/create',
         TRUE,
+        'c0000000-0000-0000-0000-000000000202',
         NULL,
         100,
         TRUE
@@ -88,97 +143,22 @@ VALUES
         FALSE,
         '/api/order/{id}',
         TRUE,
+        'c0000000-0000-0000-0000-000000000201',
         NULL,
         100,
         TRUE
     )
-ON CONFLICT (path, method) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
+    path = EXCLUDED.path,
+    method = EXCLUDED.method,
     service_id = EXCLUDED.service_id,
     strip_prefix = EXCLUDED.strip_prefix,
     rewrite_target = EXCLUDED.rewrite_target,
     auth_required = EXCLUDED.auth_required,
+    required_scope_id = EXCLUDED.required_scope_id,
     rate_limit_id = EXCLUDED.rate_limit_id,
     priority = EXCLUDED.priority,
-    is_active = EXCLUDED.is_active;
-
--- INSERT INTO cors_configs (
---     id,
---     route_id,
---     allowed_origins,
---     allowed_methods,
---     allowed_headers,
---     allow_credentials,
---     max_age
--- )
--- VALUES
---     (
---         '90000000-0000-0000-0000-000000000101',
---         '80000000-0000-0000-0000-000000000101',
---         ARRAY['http://localhost:3000', 'http://localhost:5173'],
---         ARRAY['POST', 'OPTIONS'],
---         ARRAY['Content-Type', 'Authorization', 'X-API-Key'],
---         FALSE,
---         3600
---     ),
---     (
---         '90000000-0000-0000-0000-000000000102',
---         '80000000-0000-0000-0000-000000000102',
---         ARRAY['http://localhost:3000', 'http://localhost:5173'],
---         ARRAY['POST', 'OPTIONS'],
---         ARRAY['Content-Type', 'Authorization', 'X-API-Key'],
---         FALSE,
---         3600
---     ),
---     (
---         '90000000-0000-0000-0000-000000000103',
---         '80000000-0000-0000-0000-000000000103',
---         ARRAY['http://localhost:3000', 'http://localhost:5173'],
---         ARRAY['GET', 'OPTIONS'],
---         ARRAY['Content-Type', 'Authorization', 'X-API-Key'],
---         FALSE,
---         3600
---     ),
---     (
---         '90000000-0000-0000-0000-000000000104',
---         '80000000-0000-0000-0000-000000000104',
---         ARRAY['http://localhost:3000', 'http://localhost:5173'],
---         ARRAY['GET', 'OPTIONS'],
---         ARRAY['Content-Type', 'Authorization', 'X-API-Key'],
---         FALSE,
---         3600
---     ),
---     (
---         '90000000-0000-0000-0000-000000000105',
---         '80000000-0000-0000-0000-000000000105',
---         ARRAY['http://localhost:3000', 'http://localhost:5173'],
---         ARRAY['GET', 'OPTIONS'],
---         ARRAY['Content-Type', 'Authorization', 'X-API-Key'],
---         TRUE,
---         3600
---     ),
---     (
---         '90000000-0000-0000-0000-000000000106',
---         '80000000-0000-0000-0000-000000000106',
---         ARRAY['http://localhost:3000', 'http://localhost:5173'],
---         ARRAY['POST', 'OPTIONS'],
---         ARRAY['Content-Type', 'Authorization', 'X-API-Key'],
---         TRUE,
---         3600
---     ),
---     (
---         '90000000-0000-0000-0000-000000000107',
---         '80000000-0000-0000-0000-000000000107',
---         ARRAY['http://localhost:3000', 'http://localhost:5173'],
---         ARRAY['GET', 'OPTIONS'],
---         ARRAY['Content-Type', 'Authorization', 'X-API-Key'],
---         TRUE,
---         3600
---     )
--- ON CONFLICT (route_id) DO UPDATE SET
---     allowed_origins = EXCLUDED.allowed_origins,
---     allowed_methods = EXCLUDED.allowed_methods,
---     allowed_headers = EXCLUDED.allowed_headers,
---     allow_credentials = EXCLUDED.allow_credentials,
---     max_age = EXCLUDED.max_age;
+    is_active = EXCLUDED.is_active,
+    deleted_at = NULL;
 
 COMMIT;

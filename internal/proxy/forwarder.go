@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"gateway-api/helper/response"
+	appmiddleware "gateway-api/internal/middleware"
 	"gateway-api/internal/proxy/loadbalancer"
 
 	"github.com/gofiber/fiber/v2"
@@ -46,6 +47,7 @@ func (h *Handler) forwardWithRetry(c *fiber.Ctx, route *UpstreamRoute, requestPa
 
 		selected := routeForInstance(route, inst)
 		targetURL := buildTargetURL(&selected, requestPath, params, string(c.Request().URI().QueryString()))
+		appmiddleware.SetInstanceLogContext(c, inst.ID)
 
 		h.logger.Info("proxying request to upstream instance",
 			"request_id", c.GetRespHeader(fiber.HeaderXRequestID),
@@ -66,7 +68,9 @@ func (h *Handler) forwardWithRetry(c *fiber.Ctx, route *UpstreamRoute, requestPa
 			"client_ip", c.IP(),
 		)
 
+		upstreamStartedAt := time.Now()
 		err = proxy.DoTimeout(c, targetURL, timeout)
+		appmiddleware.AddUpstreamLatency(c, time.Since(upstreamStartedAt))
 		if err == nil {
 			if br != nil {
 				br.OnSuccess()

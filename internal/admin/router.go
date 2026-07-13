@@ -3,11 +3,23 @@ package admin
 import (
 	"context"
 
+	adminAggregations "gateway-api/internal/admin/aggregations"
+
+	adminAPIKeys "gateway-api/internal/admin/apikeys"
 	adminCache "gateway-api/internal/admin/cache"
+	adminClients "gateway-api/internal/admin/clients"
+	adminCORSConfigs "gateway-api/internal/admin/corsconfigs"
+	adminCORSPolicies "gateway-api/internal/admin/corspolicies"
 	adminInstances "gateway-api/internal/admin/instances"
+	adminIPBlacklist "gateway-api/internal/admin/ipblacklist"
+	adminPermissions "gateway-api/internal/admin/permissions"
+	adminRateLimits "gateway-api/internal/admin/ratelimits"
+	adminRoles "gateway-api/internal/admin/roles"
 	adminRoutes "gateway-api/internal/admin/routes"
 	adminServices "gateway-api/internal/admin/services"
+	adminUsers "gateway-api/internal/admin/users"
 	configcache "gateway-api/internal/config/cache"
+	runtimeipblacklist "gateway-api/internal/security/ipblacklist"
 	upstreamhealth "gateway-api/internal/upstream/health"
 
 	"github.com/gofiber/fiber/v2"
@@ -21,7 +33,7 @@ type ConfigNotifier interface {
 	NotifyChange(ctx context.Context, group string) error
 }
 
-func RegisterAdminRoutes(app *fiber.App, db *pgxpool.Pool, redisClient *redis.Client, cacheStore *configcache.Store, notifier ConfigNotifier, healthStore *upstreamhealth.Store, healthChecker adminInstances.HealthChecker, middlewares ...fiber.Handler) {
+func RegisterAdminRoutes(app *fiber.App, db *pgxpool.Pool, redisClient *redis.Client, cacheStore *configcache.Store, notifier ConfigNotifier, healthStore *upstreamhealth.Store, healthChecker adminInstances.HealthChecker, ipBlacklistChecker *runtimeipblacklist.Checker, middlewares ...fiber.Handler) {
 	admin := app.Group("/admin")
 
 	for _, middleware := range middlewares {
@@ -31,8 +43,18 @@ func RegisterAdminRoutes(app *fiber.App, db *pgxpool.Pool, redisClient *redis.Cl
 	}
 
 	adminCache.RegisterCacheRoutes(admin.Group("/cache"), cacheStore, notifier, redisClient)
+	adminClients.RegisterClientRoutes(admin.Group("/clients"), db, notifier)
+	adminAPIKeys.RegisterAPIKeyRoutes(admin.Group("/api-keys"), db, notifier)
+	adminAggregations.RegisterAggregationRoutes(admin, db, notifier)
+	adminRoles.RegisterRoleRoutes(admin.Group("/roles"), db)
+	adminPermissions.RegisterPermissionRoutes(admin.Group("/permissions"), db)
+	adminUsers.RegisterUserRoutes(admin.Group("/users"), db)
 	adminServices.RegisterServiceRoutes(admin.Group("/services"), db, notifier, cacheStore, healthStore)
 	adminInstances.RegisterServiceInstanceRoutes(admin.Group("/services"), db, notifier)
 	adminInstances.RegisterInstanceRoutes(admin.Group("/instances"), db, notifier, healthStore, healthChecker)
 	adminRoutes.RegisterRouteRoutes(admin.Group("/routes"), db, notifier)
+	adminCORSConfigs.RegisterCORSConfigRoutes(admin.Group("/routes"), db, notifier)
+	adminCORSPolicies.RegisterCORSPolicyRoutes(admin.Group("/cors-policies"), db, notifier)
+	adminRateLimits.RegisterRateLimitPolicyRoutes(admin.Group("/rate-limit-policies"), db, notifier)
+	adminIPBlacklist.RegisterIPBlacklistRoutes(admin.Group("/ip-blacklist"), db, ipBlacklistChecker)
 }

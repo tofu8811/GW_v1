@@ -1,13 +1,20 @@
 package proxy
 
-import "gateway-api/internal/proxy/loadbalancer"
+import (
+	configcache "gateway-api/internal/config/cache"
+	"gateway-api/internal/proxy/loadbalancer"
+)
 
 type UpstreamRoute struct {
-	RouteID       string
-	RoutePath     string
-	RouteMethod   string
-	StripPrefix   bool
-	RewriteTarget *string
+	RouteID         string
+	RoutePath       string
+	RouteMethod     string
+	AuthRequired    bool
+	RequiredScopeID *string
+	StripPrefix     bool
+	RewriteTarget   *string
+	RateLimit       *configcache.RateLimitPolicyValue
+	CORS            *configcache.CORSValue
 
 	ServiceID   string
 	ServiceName string

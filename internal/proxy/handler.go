@@ -10,6 +10,7 @@ import (
 
 	"gateway-api/helper/response"
 	configcache "gateway-api/internal/config/cache"
+	appmiddleware "gateway-api/internal/middleware"
 	"gateway-api/internal/proxy/loadbalancer"
 	"gateway-api/internal/upstream/breaker"
 	upstreamhealth "gateway-api/internal/upstream/health"
@@ -20,22 +21,30 @@ import (
 var ErrRouteNotFound = errors.New("gateway route not found")
 
 type Handler struct {
-	configCache  *configcache.Store
-	logger       *slog.Logger
-	roundRobin   *loadbalancer.RoundRobin
-	weighted     *loadbalancer.WeightedRoundRobin
-	healthFilter *upstreamhealth.HealthFilter
-	breakers     *breaker.Registry
+	configCache   *configcache.Store
+	logger        *slog.Logger
+	roundRobin    *loadbalancer.RoundRobin
+	weighted      *loadbalancer.WeightedRoundRobin
+	healthFilter  *upstreamhealth.HealthFilter
+	breakers      *breaker.Registry
+	authenticator RouteAuthenticator
+	rateLimiter   *RateLimiter
 }
 
-func NewHandler(configCache *configcache.Store, logger *slog.Logger, healthFilter *upstreamhealth.HealthFilter, breakers *breaker.Registry) *Handler {
+type RouteAuthenticator interface {
+	Authenticate(c *fiber.Ctx, requiredScopeID *string) error
+}
+
+func NewHandler(configCache *configcache.Store, logger *slog.Logger, healthFilter *upstreamhealth.HealthFilter, breakers *breaker.Registry, rateLimiter *RateLimiter, authenticator RouteAuthenticator) *Handler {
 	return &Handler{
-		configCache:  configCache,
-		logger:       logger,
-		roundRobin:   loadbalancer.NewRoundRobin(),
-		weighted:     loadbalancer.NewWeightedRoundRobin(),
-		healthFilter: healthFilter,
-		breakers:     breakers,
+		configCache:   configCache,
+		logger:        logger,
+		roundRobin:    loadbalancer.NewRoundRobin(),
+		weighted:      loadbalancer.NewWeightedRoundRobin(),
+		healthFilter:  healthFilter,
+		breakers:      breakers,
+		authenticator: authenticator,
+		rateLimiter:   rateLimiter,
 	}
 }
 
@@ -43,6 +52,42 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 	startedAt := time.Now()
 	requestPath := c.Path()
 	method := c.Method()
+	if method == fiber.MethodOptions && strings.TrimSpace(c.Get(fiber.HeaderAccessControlRequestMethod)) != "" {
+		return h.handleCORSPreflight(c, requestPath)
+	}
+
+	if aggregation, params, ok := h.findAggregation(requestPath, method); ok {
+		origin := strings.TrimSpace(c.Get(fiber.HeaderOrigin))
+		if origin != "" {
+			if err := validateCORSRequest(aggregation.CORS, origin, method); err != nil {
+				return response.Forbidden(c, err.Error())
+			}
+			defer setActualCORSHeaders(c, aggregation.CORS, origin)
+		}
+		if aggregation.AuthRequired {
+			if h.authenticator == nil {
+				h.logger.Error("aggregation requires authentication but no authenticator is configured", "aggregation_id", aggregation.ID)
+				return response.InternalServerError(c)
+			}
+			if err := h.authenticator.Authenticate(c, aggregation.RequiredScopeID); err != nil {
+				return err
+			}
+			if c.Response().StatusCode() >= fiber.StatusBadRequest {
+				return nil
+			}
+		}
+		if h.rateLimiter != nil {
+			allowed, err := h.rateLimiter.AllowAggregation(c, aggregation)
+			if err != nil {
+				return err
+			}
+			if !allowed {
+				return nil
+			}
+		}
+		c.Locals("aggregation_path_params", params)
+		return h.handleAggregation(c, aggregation)
+	}
 
 	route, params, err := h.findRoute(c.Context(), requestPath, method)
 	if errors.Is(err, ErrRouteNotFound) {
@@ -65,20 +110,74 @@ func (h *Handler) Proxy(c *fiber.Ctx) error {
 		return response.InternalServerError(c)
 	}
 
+	origin := strings.TrimSpace(c.Get(fiber.HeaderOrigin))
+	if origin != "" {
+		if err := validateCORSRequest(route.CORS, origin, method); err != nil {
+			return response.Forbidden(c, err.Error())
+		}
+		defer setActualCORSHeaders(c, route.CORS, origin)
+	}
+
+	appmiddleware.SetRouteLogContext(c, route.RouteID, route.ServiceID, route.ServiceName, route.RoutePath)
+	if route.AuthRequired {
+		if h.authenticator == nil {
+			h.logger.Error("route requires authentication but no authenticator is configured", "route_id", route.RouteID)
+			return response.InternalServerError(c)
+		}
+		if err := h.authenticator.Authenticate(c, route.RequiredScopeID); err != nil {
+			return err
+		}
+		if c.Response().StatusCode() >= fiber.StatusBadRequest {
+			return nil
+		}
+	}
+
+	if h.rateLimiter != nil {
+		allowed, err := h.rateLimiter.Allow(c, route)
+		if err != nil {
+			return err
+		}
+		if !allowed {
+			return nil
+		}
+	}
+
 	prepareForwardedRequest(c)
 	return h.forwardWithRetry(c, route, requestPath, params, startedAt)
 }
 
+func (h *Handler) findAggregation(path string, method string) (*configcache.AggregationValue, map[string]string, bool) {
+	if aggregation, ok := h.configCache.FindAggregation(method, path); ok {
+		return aggregation, map[string]string{}, true
+	}
+	candidates := h.configCache.FindAggregationCandidates(method)
+	for i := range candidates {
+		params, ok := matchPath(candidates[i].Path, path)
+		if ok {
+			return &candidates[i], params, true
+		}
+	}
+	return nil, nil, false
+}
 func (h *Handler) findRoute(ctx context.Context, path string, method string) (*UpstreamRoute, map[string]string, error) {
 	candidates := h.configCache.FindCandidates(method)
 
 	for i := range candidates {
 		params, ok := matchPath(candidates[i].Path, path)
-		if !ok || len(candidates[i].Instances) == 0 {
+		if !ok {
 			continue
 		}
 
-		matched := upstreamRoutesFromCache(candidates[i])
+		service, ok := h.configCache.FindService(candidates[i].ServiceID)
+		if !ok {
+			continue
+		}
+		serviceInstances := h.configCache.FindInstancesByServiceID(candidates[i].ServiceID)
+		if len(serviceInstances) == 0 {
+			continue
+		}
+
+		matched := upstreamRoutesFromCache(candidates[i], service, serviceInstances)
 		instances := make([]loadbalancer.Instance, 0, len(matched))
 		for _, route := range matched {
 			instances = append(instances, loadbalancer.Instance{
@@ -107,26 +206,30 @@ func (h *Handler) findRoute(ctx context.Context, path string, method string) (*U
 	return nil, nil, ErrRouteNotFound
 }
 
-func upstreamRoutesFromCache(route configcache.RouteValue) []UpstreamRoute {
-	routes := make([]UpstreamRoute, 0, len(route.Instances))
-	for _, instance := range route.Instances {
+func upstreamRoutesFromCache(route configcache.RouteValue, service configcache.ServiceValue, instances []configcache.InstanceValue) []UpstreamRoute {
+	routes := make([]UpstreamRoute, 0, len(instances))
+	for _, instance := range instances {
 		routes = append(routes, UpstreamRoute{
 			RouteID:               route.RouteID,
 			RoutePath:             route.Path,
 			RouteMethod:           route.Method,
+			AuthRequired:          route.AuthRequired,
+			RequiredScopeID:       route.RequiredScopeID,
 			StripPrefix:           route.StripPrefix,
 			RewriteTarget:         route.RewriteTarget,
-			ServiceID:             route.Service.ID,
-			ServiceName:           route.Service.Name,
-			Protocol:              route.Service.Protocol,
-			LBStrategy:            route.Service.LBStrategy,
+			RateLimit:             route.RateLimit,
+			CORS:                  route.CORS,
+			ServiceID:             route.ServiceID,
+			ServiceName:           service.Name,
+			Protocol:              service.Protocol,
+			LBStrategy:            service.LBStrategy,
 			InstanceID:            instance.ID,
 			Host:                  instance.Host,
 			Port:                  instance.Port,
 			Weight:                instance.Weight,
-			TimeoutMS:             route.Service.TimeoutMS,
-			RetryCount:            route.Service.RetryCount,
-			CircuitBreakerEnabled: route.Service.CircuitBreakerEnabled,
+			TimeoutMS:             service.TimeoutMS,
+			RetryCount:            service.RetryCount,
+			CircuitBreakerEnabled: service.CircuitBreakerEnabled,
 		})
 	}
 	return routes

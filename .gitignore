@@ -2,7 +2,11 @@
 .gocache/
 tmp/
 bin/
+build/
+dist/
 .tmp-go-build
+*.exe
+*.exe~
 *.test
 *.out
 coverage.out
@@ -14,9 +18,12 @@ coverage.out
 
 # Logs
 *.log
+*.jsonl
+logs/
 
 # OS and editor files
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+.codex/

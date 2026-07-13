@@ -12,6 +12,8 @@ type CreateServiceRequest struct {
 	RetryCount            *int16  `json:"retry_count"`
 	CircuitBreakerEnabled *bool   `json:"circuit_breaker_enabled"`
 	IsActive              *bool   `json:"is_active"`
+	AutoCreateScopes      *bool   `json:"auto_create_scopes"`
+	ScopeResource         *string `json:"scope_resource"`
 }
 
 type UpdateServiceRequest struct {

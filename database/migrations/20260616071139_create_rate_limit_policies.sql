@@ -6,7 +6,9 @@ CREATE TABLE rate_limit_policies (
                         CONSTRAINT rate_limit_policies_limit_type_check CHECK (limit_type IN ('ip', 'user', 'api_key')),
     max_requests    INTEGER NOT NULL CONSTRAINT rate_limit_policies_max_requests_check CHECK (max_requests > 0),
     window_seconds  INTEGER NOT NULL CONSTRAINT rate_limit_policies_window_seconds_check CHECK (window_seconds > 0),
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    is_active       BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- +goose Down

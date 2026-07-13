@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"gateway-api/helper/pagination"
 
@@ -21,7 +22,13 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) Create(ctx context.Context, service *Service) error {
+func (r *Repository) Create(ctx context.Context, service *Service, scopeResource *string) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
 	query := `
 		INSERT INTO services (
 			id, name, description, protocol, lb_strategy, health_path,
@@ -31,7 +38,7 @@ func (r *Repository) Create(ctx context.Context, service *Service) error {
 		RETURNING created_at, updated_at
 	`
 
-	return r.db.QueryRow(
+	err = tx.QueryRow(
 		ctx,
 		query,
 		service.ID,
@@ -45,6 +52,15 @@ func (r *Repository) Create(ctx context.Context, service *Service) error {
 		service.CircuitBreakerEnabled,
 		service.IsActive,
 	).Scan(&service.CreatedAt, &service.UpdatedAt)
+	if err != nil {
+		return err
+	}
+	if scopeResource != nil {
+		if err := createDefaultAPIScopes(ctx, tx, service.ID, *scopeResource); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Service, error) {
@@ -52,6 +68,7 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Se
 		SELECT id, name, description, protocol, lb_strategy, COALESCE(health_path, ''), timeout_ms,
 		       retry_count, circuit_breaker_enabled, is_active, created_at, updated_at
 		FROM services
+		WHERE deleted_at IS NULL
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2
 	`
@@ -93,7 +110,7 @@ func (r *Repository) FindAll(ctx context.Context, p pagination.Pagination) ([]Se
 
 func (r *Repository) Count(ctx context.Context) (int64, error) {
 	var total int64
-	err := r.db.QueryRow(ctx, `SELECT count(*) FROM services`).Scan(&total)
+	err := r.db.QueryRow(ctx, `SELECT count(*) FROM services WHERE deleted_at IS NULL`).Scan(&total)
 	return total, err
 }
 
@@ -102,7 +119,7 @@ func (r *Repository) FindByID(ctx context.Context, id uuid.UUID) (*Service, erro
 		SELECT id, name, description, protocol, lb_strategy, COALESCE(health_path, ''), timeout_ms,
 		       retry_count, circuit_breaker_enabled, is_active, created_at, updated_at
 		FROM services
-		WHERE id = $1
+		WHERE id = $1 AND deleted_at IS NULL
 	`
 
 	var service Service
@@ -145,7 +162,7 @@ func (r *Repository) Update(ctx context.Context, service *Service) error {
 		    retry_count = $8,
 		    circuit_breaker_enabled = $9,
 		    is_active = $10
-		WHERE id = $1
+		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING updated_at
 	`
 
@@ -172,7 +189,7 @@ func (r *Repository) Update(ctx context.Context, service *Service) error {
 }
 
 func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
-	result, err := r.db.Exec(ctx, `DELETE FROM services WHERE id = $1`, id)
+	result, err := r.db.Exec(ctx, `UPDATE services SET is_active = FALSE, deleted_at = now() WHERE id = $1 AND deleted_at IS NULL`, id)
 	if err != nil {
 		return err
 	}
@@ -181,5 +198,27 @@ func (r *Repository) Delete(ctx context.Context, id uuid.UUID) error {
 		return ErrServiceNotFound
 	}
 
+	return nil
+}
+
+func createDefaultAPIScopes(ctx context.Context, tx pgx.Tx, serviceID uuid.UUID, resource string) error {
+	for _, action := range []string{"read", "write"} {
+		code := fmt.Sprintf("%s:%s", resource, action)
+		description := fmt.Sprintf("%s access for %s", action, resource)
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO api_scopes (service_id, code, resource, action, description)
+			SELECT $1, $2, $3, $4, $5
+			WHERE NOT EXISTS (
+				SELECT 1
+				FROM api_scopes
+				WHERE service_id = $1
+				  AND resource = $3
+				  AND action = $4
+				  AND deleted_at IS NULL
+			)
+		`, serviceID, code, resource, action, description); err != nil {
+			return err
+		}
+	}
 	return nil
 }

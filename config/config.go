@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -10,9 +11,13 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const defaultJWTSecret = "change_me_in_local_env"
+
 type Config struct {
 	AppEnv      string
 	AppPort     string
+	LogFilePath string
+	GatewayNode string
 	DatabaseURL string
 	RedisAddr   string
 	RedisPass   string
@@ -27,6 +32,7 @@ type Config struct {
 	ConfigRebuildLockTTL time.Duration
 	ConfigLockWait       time.Duration
 	ConfigSchemaVersion  int
+	CORSSource           string
 
 	HealthCheckInterval      time.Duration
 	HealthProbeTimeout       time.Duration
@@ -37,6 +43,20 @@ type Config struct {
 	BreakerFailureThreshold int
 	BreakerOpenTimeout      time.Duration
 	BreakerHalfOpenMax      int
+
+	RabbitMQURL              string
+	RabbitMQLogExchange      string
+	RabbitMQLogQueue         string
+	RabbitMQLogRoutingKey    string
+	RabbitMQLogDLX           string
+	RabbitMQLogDLQ           string
+	RabbitMQPublishTimeout   time.Duration
+	ElasticsearchURL         string
+	ElasticsearchIndexPrefix string
+	LogConsumerBatchSize     int
+	LogConsumerFlushInterval time.Duration
+	LogConsumerPrefetch      int
+	LogServicePort           string
 }
 
 func Load() Config {
@@ -45,7 +65,7 @@ func Load() Config {
 	redisDB, _ := strconv.Atoi(getEnv("REDIS_DB", "0"))
 	jwtAccessTTL := getDurationEnv("JWT_ACCESS_TOKEN_TTL", 15*time.Minute)
 	jwtRefreshTTL := getDurationEnv("JWT_REFRESH_TOKEN_TTL", 7*24*time.Hour)
-	schemaVersion, _ := strconv.Atoi(getEnv("CONFIG_SCHEMA_VERSION", "1"))
+	schemaVersion, _ := strconv.Atoi(getEnv("CONFIG_SCHEMA_VERSION", "2"))
 	databaseURL := getEnv("DATABASE_URL", "")
 	if databaseURL == "" {
 		databaseURL = buildDatabaseURL()
@@ -60,12 +80,14 @@ func Load() Config {
 	return Config{
 		AppEnv:      getEnv("APP_ENV", "development"),
 		AppPort:     getEnv("APP_PORT", "8080"),
+		LogFilePath: getEnv("LOG_FILE", "logs/gateway.jsonl"),
+		GatewayNode: getEnv("GATEWAY_NODE", "gateway-api-1"),
 		DatabaseURL: databaseURL,
 		RedisAddr:   getEnv("REDIS_ADDR", "localhost:6379"),
 		RedisPass:   getEnv("REDIS_PASSWORD", ""),
 		RedisDB:     redisDB,
 
-		JWTSecret:     getEnv("JWT_SECRET", "change_me_in_local_env"),
+		JWTSecret:     getEnv("JWT_SECRET", defaultJWTSecret),
 		JWTAccessTTL:  jwtAccessTTL,
 		JWTRefreshTTL: jwtRefreshTTL,
 
@@ -74,6 +96,7 @@ func Load() Config {
 		ConfigRebuildLockTTL: durationSeconds("CONFIG_REBUILD_LOCK_TTL_SECONDS", 10*time.Second),
 		ConfigLockWait:       durationSeconds("CONFIG_REBUILD_LOCK_WAIT_SECONDS", 2*time.Second),
 		ConfigSchemaVersion:  schemaVersion,
+		CORSSource:           strings.ToLower(strings.TrimSpace(getEnv("CORS_SOURCE", "policy"))),
 
 		HealthCheckInterval:      healthInterval,
 		HealthProbeTimeout:       durationEnv("HEALTH_PROBE_TIMEOUT", 2*time.Second),
@@ -84,7 +107,32 @@ func Load() Config {
 		BreakerFailureThreshold: intEnv("BREAKER_FAILURE_THRESHOLD", 5),
 		BreakerOpenTimeout:      durationEnv("BREAKER_OPEN_TIMEOUT", 15*time.Second),
 		BreakerHalfOpenMax:      intEnv("BREAKER_HALFOPEN_MAX", 1),
+
+		RabbitMQURL:              getEnv("RABBITMQ_URL", ""),
+		RabbitMQLogExchange:      getEnv("RABBITMQ_LOG_EXCHANGE", "gateway.logs.exchange"),
+		RabbitMQLogQueue:         getEnv("RABBITMQ_LOG_QUEUE", "gateway.logs.queue"),
+		RabbitMQLogRoutingKey:    getEnv("RABBITMQ_LOG_ROUTING_KEY", "gateway.request.completed"),
+		RabbitMQLogDLX:           getEnv("RABBITMQ_LOG_DLX", "gateway.logs.dlx"),
+		RabbitMQLogDLQ:           getEnv("RABBITMQ_LOG_DLQ", "gateway.logs.dlq"),
+		RabbitMQPublishTimeout:   durationEnv("RABBITMQ_PUBLISH_TIMEOUT", 500*time.Millisecond),
+		ElasticsearchURL:         getEnv("ELASTICSEARCH_URL", "http://localhost:9200"),
+		ElasticsearchIndexPrefix: getEnv("ELASTICSEARCH_LOG_INDEX_PREFIX", "gateway-logs"),
+		LogConsumerBatchSize:     intEnv("LOG_CONSUMER_BATCH_SIZE", 500),
+		LogConsumerFlushInterval: durationEnv("LOG_CONSUMER_FLUSH_INTERVAL", time.Second),
+		LogConsumerPrefetch:      intEnv("LOG_CONSUMER_PREFETCH", 100),
+		LogServicePort:           getEnv("LOG_SERVICE_PORT", "8081"),
 	}
+}
+
+func (c Config) Validate() error {
+	secret := strings.TrimSpace(c.JWTSecret)
+	if secret == "" {
+		return errors.New("JWT_SECRET is required")
+	}
+	if strings.EqualFold(strings.TrimSpace(c.AppEnv), "production") && secret == defaultJWTSecret {
+		return errors.New("JWT_SECRET must be changed in production")
+	}
+	return nil
 }
 
 func loadDotEnv() {

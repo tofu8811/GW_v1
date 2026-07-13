@@ -53,22 +53,38 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 		return response.BadRequest(c, err.Error())
 	}
 
+	requiredScopeID, err := validation.ParseOptionalUUID("required_scope_id", req.RequiredScopeID)
+	if err != nil {
+		return response.BadRequest(c, err.Error())
+	}
+	authRequired := boolValue(req.AuthRequired, true)
+	if requiredScopeID != nil && !authRequired {
+		return response.BadRequest(c, "auth_required must be true when required_scope_id is set")
+	}
+
 	rateLimitID, err := validation.ParseOptionalUUID("rate_limit_id", req.RateLimitID)
 	if err != nil {
 		return response.BadRequest(c, err.Error())
 	}
 
+	corsPolicyID, err := validation.ParseOptionalUUID("cors_policy_id", req.CORSPolicyID)
+	if err != nil {
+		return response.BadRequest(c, err.Error())
+	}
+
 	route := Route{
-		ID:            id,
-		Path:          path,
-		Method:        method,
-		ServiceID:     serviceID,
-		StripPrefix:   boolValue(req.StripPrefix, false),
-		RewriteTarget: stringPtr(req.RewriteTarget),
-		AuthRequired:  boolValue(req.AuthRequired, true),
-		RateLimitID:   rateLimitID,
-		Priority:      intValue(req.Priority, 0),
-		IsActive:      boolValue(req.IsActive, true),
+		ID:              id,
+		Path:            path,
+		Method:          method,
+		ServiceID:       serviceID,
+		StripPrefix:     boolValue(req.StripPrefix, false),
+		RewriteTarget:   stringPtr(req.RewriteTarget),
+		AuthRequired:    authRequired,
+		RequiredScopeID: requiredScopeID,
+		RateLimitID:     rateLimitID,
+		CORSPolicyID:    corsPolicyID,
+		Priority:        intValue(req.Priority, 0),
+		IsActive:        boolValue(req.IsActive, true),
 	}
 
 	if err := h.repository.Create(c.Context(), &route); err != nil {
@@ -176,12 +192,31 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 		route.AuthRequired = *req.AuthRequired
 	}
 
+	if req.RequiredScopeID.Set {
+		requiredScopeID, err := validation.ParseOptionalUUID("required_scope_id", req.RequiredScopeID.Value)
+		if err != nil {
+			return response.BadRequest(c, err.Error())
+		}
+		route.RequiredScopeID = requiredScopeID
+	}
+	if route.RequiredScopeID != nil && !route.AuthRequired {
+		return response.BadRequest(c, "auth_required must be true when required_scope_id is set")
+	}
+
 	if req.RateLimitID != nil {
 		rateLimitID, err := validation.ParseOptionalUUID("rate_limit_id", req.RateLimitID)
 		if err != nil {
 			return response.BadRequest(c, err.Error())
 		}
 		route.RateLimitID = rateLimitID
+	}
+
+	if req.CORSPolicyID.Set {
+		corsPolicyID, err := validation.ParseOptionalUUID("cors_policy_id", req.CORSPolicyID.Value)
+		if err != nil {
+			return response.BadRequest(c, err.Error())
+		}
+		route.CORSPolicyID = corsPolicyID
 	}
 
 	if req.Priority != nil {
@@ -256,29 +291,57 @@ func stringPtr(value *string) *string {
 }
 
 func toResponse(route Route) RouteResponse {
+	var requiredScopeID *string
+	if route.RequiredScopeID != nil {
+		value := route.RequiredScopeID.String()
+		requiredScopeID = &value
+	}
 	var rateLimitID *string
 	if route.RateLimitID != nil {
 		value := route.RateLimitID.String()
 		rateLimitID = &value
 	}
+	var corsPolicyID *string
+	if route.CORSPolicyID != nil {
+		value := route.CORSPolicyID.String()
+		corsPolicyID = &value
+	}
+	var corsPolicy *CORSPolicySummaryResponse
+	if route.CORSPolicy != nil {
+		corsPolicy = &CORSPolicySummaryResponse{
+			ID:               route.CORSPolicy.ID.String(),
+			Name:             route.CORSPolicy.Name,
+			AllowedOrigins:   route.CORSPolicy.AllowedOrigins,
+			AllowedMethods:   route.CORSPolicy.AllowedMethods,
+			AllowedHeaders:   route.CORSPolicy.AllowedHeaders,
+			ExposedHeaders:   route.CORSPolicy.ExposedHeaders,
+			AllowCredentials: route.CORSPolicy.AllowCredentials,
+			MaxAge:           route.CORSPolicy.MaxAge,
+		}
+	}
 
 	return RouteResponse{
-		ID:            route.ID.String(),
-		Path:          route.Path,
-		Method:        route.Method,
-		ServiceID:     route.ServiceID.String(),
-		StripPrefix:   route.StripPrefix,
-		RewriteTarget: route.RewriteTarget,
-		AuthRequired:  route.AuthRequired,
-		RateLimitID:   rateLimitID,
-		Priority:      route.Priority,
-		IsActive:      route.IsActive,
-		CreatedAt:     route.CreatedAt,
-		UpdatedAt:     route.UpdatedAt,
+		ID:              route.ID.String(),
+		Path:            route.Path,
+		Method:          route.Method,
+		ServiceID:       route.ServiceID.String(),
+		StripPrefix:     route.StripPrefix,
+		RewriteTarget:   route.RewriteTarget,
+		AuthRequired:    route.AuthRequired,
+		RequiredScopeID: requiredScopeID,
+		RateLimitID:     rateLimitID,
+		CORSPolicyID:    corsPolicyID,
+		CORSPolicy:      corsPolicy,
+		Priority:        route.Priority,
+		IsActive:        route.IsActive,
+		CreatedAt:       route.CreatedAt,
+		UpdatedAt:       route.UpdatedAt,
 	}
 }
-
 func handleDBError(c *fiber.Ctx, err error) error {
+	if errors.Is(err, ErrRequiredScopeUnavailable) || errors.Is(err, ErrRequiredScopeServiceMismatch) || errors.Is(err, ErrCORSPolicyUnavailable) {
+		return response.Error(c, fiber.StatusUnprocessableEntity, "invalid_reference", err.Error())
+	}
 	if apiErr, ok := dberror.MapDBError(err); ok {
 		return response.Error(c, apiErr.Status, apiErr.Code, apiErr.Message)
 	}
